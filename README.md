@@ -7,13 +7,13 @@ A comprehensive, real-time ticket booking system built with **.NET Core**. The p
 - **Backend:** .NET (C#)
 - **Architecture:** Clean Architecture (Domain, Application, Infrastructure, API).
 - **Design Pattern:** CQRS using **MediatR**.
-- **Real-Time Communication:** **SignalR** (for live seat locking and booking updates).
-- **Background Jobs:** **Hangfire** (for releasing unpaid locked seats after 5 minutes).
+- **Real-Time Communication:** **SignalR** (Secured with JWT for live seat locking and booking updates).
+- **Background Jobs:** **Hangfire** (for releasing unpaid locked seats after a 5-minute timeout).
 - **Database:** Entity Framework Core (SQL Server).
 - **Authentication:** ASP.NET Core Identity & JWT (JSON Web Tokens).
-- **Caching:** In-Memory Cache (for fast retrieval of events and seats).
-- **Payment Integration:** **Paymob**.
-- **Security:** HMAC SHA-256 for QR Code generation and validation.
+- **Caching:** **Distributed Cache (Redis)** for high performance and shared state across servers.
+- **PDF Generation:** **QuestPDF** & **QRCoder** for professional ticket issuing.
+- **Payment Integration:** **Paymob** (with Idempotency and Optimistic Concurrency protection).
 
 ---
 
@@ -22,48 +22,49 @@ A comprehensive, real-time ticket booking system built with **.NET Core**. The p
 ### 1.  Real-Time Seat Booking
 - Users can view live seat statuses (Available, Locked, Booked).
 - When a user selects a seat, it becomes **Locked** for 5 minutes.
-- SignalR broadcasts the lock to all connected clients immediately.
+- SignalR broadcasts the lock to all connected clients immediately to prevent double-selection.
 - If payment is not completed within 5 minutes, **Hangfire** automatically releases the seat back to `Available` and clears the pending booking.
 
-### 2.  Waitlist System
-- If an event is sold out, users can join a waitlist.
-- If someone cancels their booking or the admin adds new seats, the system automatically sends an **Email Notification** to waitlisted users.
+### 2.  Concurrency & Idempotency Protection
+- **Optimistic Concurrency:** Uses `RowVersion` (byte array) to ensure no two users can book the same seat at the exact same millisecond.
+- **Payment Idempotency:** Custom logic to handle duplicate notifications from payment gateways (Paymob), ensuring transactions are processed only once even if the network fails or retries.
 
-### 3.  Wallet & Payment System
-- Users have an internal virtual wallet.
-- Payments can be made via **Paymob** or directly from the User's Wallet.
-- Successful payments trigger an HTML Email containing the official ticket details.
+### 3.  Professional PDF Tickets
+- Successful payments trigger the automatic generation of a professional **PDF Ticket** using QuestPDF.
+- The ticket is designed with a high-end layout including Event Details, Attendee Name, Venue, and Seat Number.
+- The system automatically sends the PDF as an **Email Attachment** to the user immediately after payment confirmation.
 
-### 4.  Promo Codes
-- Admins can generate discount promo codes.
-- Promo codes have a max usage limit and validation logic before applying the discount to the final price.
+### 4.  Secure QR Code System
+- Each ticket contains a **Real, Dynamically Generated QR Code**.
+- The QR content includes a secure payload: `TICKET|BookingId|Username|SeatNumber`.
+- The system uses HMAC SHA-256 hashing to sign ticket data, making ticket forgery or manual tampering impossible.
+- Admins can scan and validate tickets at the gate against the system's database.
 
-### 5.  Ticket Transfer
-- Users can transfer their purchased tickets to other registered users in the system securely.
+### 5.  Waitlist System
+- If an event is sold out, users can join a digital waitlist.
+- If a booking is cancelled or expired, the system automatically triggers an **Email Notification** to waitlisted users on a first-come, first-served basis.
 
-### 6.  QR Code Validation
-- Tickets generate a unique string formatted as `TICKET|SeatId|Username`.
-- The string is hashed using a Secret Key (HMAC SHA-256) to generate the QR Code, making ticket forgery impossible.
-- Admins can scan and validate tickets at the gate.
+### 6.  Wallet & Payment System
+- Integrated with **Paymob** for credit card and mobile wallet payments.
+- Internal **Virtual Wallet** system allowing users to keep funds, pay for tickets, or receive refunds.
 
-### 7.  Verified Reviews
-- Users can only review an event **if they have attended it** (Ticket booked & Event Date has passed).
+### 7.  Ticket Transfer
+- Users can securely transfer their purchased tickets to other registered users.
+- The system logs the transfer in an **Audit Trail** and invalidates the old ticket's QR code.
 
-### 8.  Admin Dashboard
-- Advanced statistics (Total Revenue, Total Booked Seats, Top Events, Top Customers).
-- Complete Audit Logging for critical actions (e.g., Ticket Transfers, Wallet purchases).
+### 8.  Verified Reviews
+- A "Verified Purchase" review system where users can only rate an event **if they actually attended it** (booking confirmed and event date passed).
+
+### 9.  Admin Dashboard
+- Advanced analytics for admins: Total Revenue, Seat Fill Rate, Top Selling Events, and Customer behavior.
+- Complete system logs for critical actions like wallet transactions and ticket transfers.
 
 ---
 
 ##  Project Structure
 
-- **`TicketBookingSystem.Domain`**: Core entities (`Event`, `Seat`, `Booking`, `User`, etc.) and Enums. No external dependencies.
-- **`TicketBookingSystem.Application`**: Business rules, CQRS Commands/Queries, DTOs, Validation, and Interfaces (`IPaymentService`, `IEmailService`).
-- **`TicketBookingSystem.Infrastructure`**: Implementation of interfaces, EF Core `ApplicationDbContext`, Identity, Paymob Integration, SignalR Hubs, and Hangfire setup.
-- **`TicketBookingSystem.Api`**: Controllers, Middlewares (Global Exception Handling), and `Program.cs`.
+- **`TicketBookingSystem.Domain`**: Core entities (`Event`, `Seat`, `Booking`, etc.), Enums, and **AppConstants**. No external dependencies.
+- **`TicketBookingSystem.Application`**: Business rules, CQRS Commands/Queries, DTOs, Validation, and Interfaces (`ITicketPdfService`, `IEmailService`, `IApplicationDbContext`).
+- **`TicketBookingSystem.Infrastructure`**: Implementation of interfaces, Redis Cache, SQL Server (EF Core), Identity, SignalR Hubs, and QuestPDF service.
+- **`TicketBookingSystem.Api`**: Controllers, JWT Configuration, Global Exception Handling, and API Endpoints.
 
----
-
-   git clone [https://github.com/Hussein1818/TicketBooking.git](https://github.com/Hussein1818/TicketBooking.git)
-   cd TicketBookingSystem
-   git checkout develop
