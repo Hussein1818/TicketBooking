@@ -19,13 +19,24 @@ public class SeatReleaseService : ISeatReleaseService
 
     public async Task ReleaseSeatIfExpired(int seatId)
     {
-        var seat = await _context.Seats.FirstOrDefaultAsync(s => s.Id == seatId);
+        
+        var booking = await _context.Bookings
+            .Include(b => b.Seat)
+            .FirstOrDefaultAsync(b => b.SeatId == seatId && b.Seat.Status == SeatStatus.Locked && b.AmountPaid == 0);
 
-        if (seat != null && seat.Status == SeatStatus.Locked)
+        if (booking != null)
         {
-            seat.Status = SeatStatus.Available;
+            
+            booking.Seat.Status = SeatStatus.Available;
+
+            
+            _context.Bookings.Remove(booking);
+
             await _context.SaveChangesAsync(CancellationToken.None);
-            await _hubService.SendSeatAvailableNotification(seat.Id);
+
+            
+            await _hubService.SendSeatAvailableNotification(seatId);
+            await _hubService.SendDashboardUpdate();
         }
     }
 }

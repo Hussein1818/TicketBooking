@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TicketBookingSystem.Application.Features.Admin; 
-using TicketBookingSystem.Application.Features.Dashboard;
 using TicketBookingSystem.Application.Features.Events.Commands;
 using System.Threading.Tasks;
 

@@ -7,13 +7,13 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using TicketBookingSystem.Api.Hubs;
 using TicketBookingSystem.Api.Middlewares;
-using TicketBookingSystem.Api.Services;
 using TicketBookingSystem.Application.Features.Behaviors;
 using TicketBookingSystem.Application.Interfaces;
+using TicketBookingSystem.Infrastructure.Hubs;
 using TicketBookingSystem.Infrastructure.Persistence;
 using TicketBookingSystem.Infrastructure.Services;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -67,6 +67,7 @@ builder.Services.AddScoped<ISeatReleaseService, SeatReleaseService>();
 builder.Services.AddScoped<IJobService, HangfireJobService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddHttpClient();
+builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddScoped<IPaymentService, PaymobPaymentService>();
 builder.Services.AddAuthorization();
 
@@ -96,7 +97,6 @@ builder.Services.AddValidatorsFromAssembly(typeof(TicketBookingSystem.Applicatio
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddMemoryCache();
-builder.Services.AddHostedService<SeatCleanupService>();
 builder.Services.AddSignalR();
 builder.Services.AddScoped<ITicketHubService, TicketHubService>();
 builder.Services.AddScoped<IEmailService, EmailService>();

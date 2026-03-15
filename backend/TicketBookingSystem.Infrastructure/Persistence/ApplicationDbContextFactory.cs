@@ -1,5 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.Extensions.Configuration;
+using System.IO;
 
 namespace TicketBookingSystem.Infrastructure.Persistence;
 
@@ -7,11 +9,20 @@ public class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Applicati
 {
     public ApplicationDbContext CreateDbContext(string[] args)
     {
-        var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
+        
+        IConfigurationRoot configuration = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile(Path.Combine(Directory.GetCurrentDirectory(), "../TicketBookingSystem.Api/appsettings.json"), optional: true)
+            .Build();
+
+        var builder = new DbContextOptionsBuilder<ApplicationDbContext>();
 
         
-        optionsBuilder.UseSqlServer("Server=.;Database=TicketBookingDB;Trusted_Connection=True;TrustServerCertificate=True;");
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+                               ?? "Server=.;Database=TicketBookingDB;Trusted_Connection=True;TrustServerCertificate=True;";
 
-        return new ApplicationDbContext(optionsBuilder.Options);
+        builder.UseSqlServer(connectionString);
+
+        return new ApplicationDbContext(builder.Options);
     }
 }

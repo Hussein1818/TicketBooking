@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.SignalR;
-using TicketBookingSystem.Api.Hubs;
+using TicketBookingSystem.Infrastructure.Hubs;
 using TicketBookingSystem.Application.Interfaces;
-using TicketBookingSystem.Api.Hubs;
+
 
 namespace TicketBookingSystem.Infrastructure.Services;
 

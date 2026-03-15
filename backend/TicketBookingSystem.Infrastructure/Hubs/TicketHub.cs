@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.SignalR;
 
-namespace TicketBookingSystem.Api.Hubs;
+namespace TicketBookingSystem.Infrastructure.Hubs;
 
 public class TicketHub : Hub
 {
