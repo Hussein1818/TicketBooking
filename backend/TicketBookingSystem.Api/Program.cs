@@ -85,6 +85,7 @@ builder.Services.AddScoped<IJobService, HangfireJobService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
+builder.Services.AddScoped<ITicketPdfService, TicketPdfService>();
 builder.Services.AddScoped<IPaymentService, PaymobPaymentService>();
 builder.Services.AddAuthorization();
 
