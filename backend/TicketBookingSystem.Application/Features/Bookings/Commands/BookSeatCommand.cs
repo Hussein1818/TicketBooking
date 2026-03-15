@@ -1,13 +1,14 @@
 ﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
-using TicketBookingSystem.Application.Exceptions;
-using TicketBookingSystem.Application.Interfaces;
-using TicketBookingSystem.Domain.Entities;
-using TicketBookingSystem.Domain.Enums;
 using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using TicketBookingSystem.Application.Exceptions;
+using TicketBookingSystem.Application.Interfaces;
+using TicketBookingSystem.Domain.Constants;
+using TicketBookingSystem.Domain.Entities;
+using TicketBookingSystem.Domain.Enums;
 
 namespace TicketBookingSystem.Application.Features.Bookings.Commands;
 
@@ -78,7 +79,7 @@ public class BookSeatCommandHandler : IRequestHandler<BookSeatCommand, int>
             throw new ConflictException("This seat was just booked by someone else. Please choose another seat.");
         }
 
-        var lockDuration = TimeSpan.FromMinutes(5);
+        var lockDuration = TimeSpan.FromMinutes(AppConstants.SeatLockDurationMinutes);
         var expiresAt = DateTime.UtcNow.Add(lockDuration);
 
         await _hubService.SendSeatLockedNotification(seat.Id, expiresAt);

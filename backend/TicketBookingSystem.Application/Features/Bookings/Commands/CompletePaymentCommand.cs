@@ -51,11 +51,22 @@ public class CompletePaymentCommandHandler : IRequestHandler<CompletePaymentComm
             booking.AmountPaid = booking.Seat.Price;
         }
 
-        await _context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            
+            return true;
+        }
 
+        
         await _hubService.SendSeatBookedNotification(booking.SeatId);
         await _hubService.SendDashboardUpdate();
 
+       
         var userEmail = await _context.Users
             .Where(u => u.UserName == booking.UserId)
             .Select(u => u.Email)

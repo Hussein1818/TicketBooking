@@ -1,10 +1,14 @@
 ﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
-using TicketBookingSystem.Application.DTOs;
-using TicketBookingSystem.Application.Exceptions;
+using Microsoft.Extensions.Caching.Distributed;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using TicketBookingSystem.Application.Interfaces;
 using TicketBookingSystem.Domain.Entities;
-using Microsoft.Extensions.Caching.Memory;
 
 namespace TicketBookingSystem.Application.Features.Seats.Queries;
 
@@ -13,12 +17,20 @@ public class GetEventSeatsQuery : IRequest<List<SeatDto>>
     public int EventId { get; set; }
 }
 
+public class SeatDto
+{
+    public int Id { get; set; }
+    public string SeatNumber { get; set; }
+    public decimal Price { get; set; }
+    public string Status { get; set; }
+}
+
 public class GetEventSeatsQueryHandler : IRequestHandler<GetEventSeatsQuery, List<SeatDto>>
 {
     private readonly IApplicationDbContext _context;
-    private readonly IMemoryCache _cache;
+    private readonly IDistributedCache _cache;
 
-    public GetEventSeatsQueryHandler(IApplicationDbContext context, IMemoryCache cache)
+    public GetEventSeatsQueryHandler(IApplicationDbContext context, IDistributedCache cache)
     {
         _context = context;
         _cache = cache;
@@ -26,35 +38,38 @@ public class GetEventSeatsQueryHandler : IRequestHandler<GetEventSeatsQuery, Lis
 
     public async Task<List<SeatDto>> Handle(GetEventSeatsQuery request, CancellationToken cancellationToken)
     {
-        
         var cacheKey = $"Seats_Event_{request.EventId}";
 
-       
-        if (!_cache.TryGetValue(cacheKey, out List<SeatDto>? seats))
+        
+        var cachedSeats = await _cache.GetStringAsync(cacheKey, cancellationToken);
+        if (!string.IsNullOrEmpty(cachedSeats))
         {
-            
-            var eventExists = await _context.Events.AnyAsync(e => e.Id == request.EventId, cancellationToken);
-            if (!eventExists)
-            {
-                throw new NotFoundException(nameof(Event), request.EventId);
-            }
-
-            seats = await _context.Seats
-                .Where(s => s.EventId == request.EventId)
-                .Select(s => new SeatDto
-                {
-                    Id = s.Id,
-                    SeatNumber = s.SeatNumber,
-                    Price = s.Price,
-                    Status = s.Status.ToString()
-                })
-                .ToListAsync(cancellationToken);
-
-           
-            _cache.Set(cacheKey, seats, TimeSpan.FromSeconds(2));
+            return JsonSerializer.Deserialize<List<SeatDto>>(cachedSeats)!;
         }
 
-        
-        return seats!;
+       
+        var eventExists = await _context.Events.AnyAsync(e => e.Id == request.EventId, cancellationToken);
+        if (!eventExists) throw new Exception($"Event with ID {request.EventId} not found.");
+
+        var seats = await _context.Seats
+            .Where(s => s.EventId == request.EventId)
+            .Select(s => new SeatDto
+            {
+                Id = s.Id,
+                SeatNumber = s.SeatNumber,
+                Price = s.Price,
+                Status = s.Status.ToString()
+            })
+            .ToListAsync(cancellationToken);
+
+       
+        var cacheOptions = new DistributedCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30)
+        };
+
+        await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(seats), cacheOptions, cancellationToken);
+
+        return seats;
     }
 }
