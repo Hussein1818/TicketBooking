@@ -1,84 +1,78 @@
 ﻿using MediatR;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
-using TicketBookingSystem.Application.Exceptions;
-using TicketBookingSystem.Application.Interfaces;
-using TicketBookingSystem.Domain.Entities;
-using TicketBookingSystem.Domain.Enums;
-using System.Collections.Generic;
-using System.Linq;
+using Microsoft.Extensions.Caching.Distributed;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
+using TicketBookingSystem.Application.Interfaces;
+using TicketBookingSystem.Domain.Entities;
 
 namespace TicketBookingSystem.Application.Features.Events.Commands;
 
-public class ManageEventCommand : IRequest<bool>
+
+public class ManageEventCommand : IRequest<int>
 {
-    public int EventId { get; set; }
-    public bool? CloseEvent { get; set; }
-    public decimal? NewPrice { get; set; }
-    public int? AdditionalSeats { get; set; }
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public DateTime EventDate { get; set; }
+    public string Venue { get; set; }
+    public bool IsClosed { get; set; }
+    public int MaxTicketsPerUser { get; set; }
+    public string Category { get; set; }
 }
 
-public class ManageEventCommandHandler : IRequestHandler<ManageEventCommand, bool>
+public class ManageEventCommandHandler : IRequestHandler<ManageEventCommand, int>
 {
     private readonly IApplicationDbContext _context;
-    private readonly IMemoryCache _cache;
+    private readonly IDistributedCache _cache;
 
-    public ManageEventCommandHandler(IApplicationDbContext context, IMemoryCache cache)
+    public ManageEventCommandHandler(IApplicationDbContext context, IDistributedCache cache)
     {
         _context = context;
         _cache = cache;
     }
 
-    public async Task<bool> Handle(ManageEventCommand request, CancellationToken cancellationToken)
+    public async Task<int> Handle(ManageEventCommand request, CancellationToken cancellationToken)
     {
-        var ev = await _context.Events.FindAsync(new object[] { request.EventId }, cancellationToken);
-        if (ev == null) throw new NotFoundException(nameof(Event), request.EventId);
+        Event eventEntity;
 
-        if (request.CloseEvent.HasValue && request.CloseEvent.Value)
+        if (request.Id > 0)
         {
-            ev.IsClosed = true;
+            
+            eventEntity = await _context.Events.FindAsync(new object[] { request.Id }, cancellationToken);
+            if (eventEntity == null) throw new Exception("Event not found");
+
+            eventEntity.Name = request.Name;
+            eventEntity.EventDate = request.EventDate;
+            eventEntity.Venue = request.Venue;
+            eventEntity.IsClosed = request.IsClosed;
+            eventEntity.MaxTicketsPerUser = request.MaxTicketsPerUser;
+            eventEntity.Category = request.Category;
         }
-
-        if (request.NewPrice.HasValue)
+        else
         {
-            var availableSeats = await _context.Seats
-                .Where(s => s.EventId == request.EventId && s.Status == SeatStatus.Available)
-                .ToListAsync(cancellationToken);
-
-            foreach (var seat in availableSeats)
+            
+            eventEntity = new Event
             {
-                seat.Price = request.NewPrice.Value;
-            }
-        }
-
-        if (request.AdditionalSeats.HasValue && request.AdditionalSeats.Value > 0)
-        {
-            var currentMaxSeatNumber = await _context.Seats
-                .Where(s => s.EventId == request.EventId)
-                .CountAsync(cancellationToken);
-
-            var priceToUse = request.NewPrice ??
-                            (await _context.Seats.FirstOrDefaultAsync(s => s.EventId == request.EventId, cancellationToken))?.Price ?? 100;
-
-            var newSeats = new List<Seat>();
-            for (int i = 1; i <= request.AdditionalSeats.Value; i++)
-            {
-                newSeats.Add(new Seat
-                {
-                    EventId = request.EventId,
-                    SeatNumber = $"S-{currentMaxSeatNumber + i}-{System.Guid.NewGuid().ToString().Substring(0, 4)}",
-                    Price = priceToUse,
-                    Status = SeatStatus.Available
-                });
-            }
-            _context.Seats.AddRange(newSeats);
+                Name = request.Name,
+                EventDate = request.EventDate,
+                Venue = request.Venue,
+                IsClosed = request.IsClosed,
+                MaxTicketsPerUser = request.MaxTicketsPerUser,
+                Category = request.Category
+            };
+            _context.Events.Add(eventEntity);
         }
 
         await _context.SaveChangesAsync(cancellationToken);
-        _cache.Remove($"Seats_Event_{request.EventId}");
 
-        return true;
+        
+        await _cache.RemoveAsync("Events_List", cancellationToken);
+
+        if (request.Id > 0)
+        {
+            await _cache.RemoveAsync($"Seats_Event_{request.Id}", cancellationToken);
+        }
+
+        return eventEntity.Id;
     }
 }
