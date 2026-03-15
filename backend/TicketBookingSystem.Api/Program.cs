@@ -86,6 +86,8 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddScoped<ITicketPdfService, TicketPdfService>();
+builder.Services.AddScoped<IFileService, FileService>();
+builder.Services.AddScoped<IFanIdPdfService, FanIdPdfService>();
 builder.Services.AddScoped<IPaymentService, PaymobPaymentService>();
 builder.Services.AddAuthorization();
 
