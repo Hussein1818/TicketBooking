@@ -1,0 +1,71 @@
+
+
+# User-specific files 
+*.rsuser
+*.suo
+*.user
+*.userosprefs
+*.sln.docstates
+
+# Visual Studio cache/options directory 
+.vs/
+*.vssscc
+
+# Build results (ملفات البيلد اللي بتتولد أوتوماتيك ومينفعش تترفع)
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Profiler, coverage & testing reports
+*.psess
+*.vsp
+*.vspx
+*.sap
+TestResult.xml
+TestResults/
+
+# NuGet Packages 
+*.nupkg
+packages/
+
+# Database files 
+*.sqlite
+*.db
+*.mdf
+*.ldf
+*.ndf
+
+# Configuration and secrets 
+appsettings.Development.json
+appsettings.Local.json
+secrets.json
+.env
+*.pubxml
+*.pubxml.user
+
+# OS generated files 
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+
+node_modules/
+npm-debug.log
+yarn-error.log
+dist/
+build/
