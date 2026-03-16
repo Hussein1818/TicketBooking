@@ -11,7 +11,7 @@ namespace TicketBookingSystem.Application.Features.Bookings.Commands;
 
 public class CompletePaymentCommand : IRequest<bool>
 {
-    public int BookingId { get; set; }
+    public int OrderId { get; set; }
     public bool Success { get; set; }
 }
 
@@ -44,23 +44,27 @@ public class CompletePaymentCommandHandler : IRequestHandler<CompletePaymentComm
     {
         if (!request.Success) return false;
 
-        var booking = await _context.Bookings
-            .Include(b => b.Seat)
-                .ThenInclude(s => s.Event)
-            .FirstOrDefaultAsync(b => b.Id == request.BookingId, cancellationToken);
+        var order = await _context.Orders
+            .Include(o => o.Bookings)
+                .ThenInclude(b => b.Seat)
+                    .ThenInclude(s => s.Event)
+            .FirstOrDefaultAsync(o => o.Id == request.OrderId, cancellationToken);
 
-        if (booking == null || booking.Seat.Status != SeatStatus.Locked) return false;
+        if (order == null || order.Status == "Paid") return false;
 
-        booking.Seat.Status = SeatStatus.Booked;
+        order.Status = "Paid";
 
-        if (booking.AmountPaid == 0)
+        foreach (var booking in order.Bookings)
         {
-            booking.AmountPaid = booking.Seat.Price;
-        }
+            if (booking.Seat.Status == SeatStatus.Locked)
+            {
+                booking.Seat.Status = SeatStatus.Booked;
 
-        if (!string.IsNullOrEmpty(booking.JobId))
-        {
-            _jobService.CancelJob(booking.JobId);
+                if (!string.IsNullOrEmpty(booking.JobId))
+                {
+                    _jobService.CancelJob(booking.JobId);
+                }
+            }
         }
 
         try
@@ -72,42 +76,48 @@ public class CompletePaymentCommandHandler : IRequestHandler<CompletePaymentComm
             return true;
         }
 
-        await _hubService.SendSeatBookedNotification(booking.SeatId);
+        foreach (var booking in order.Bookings)
+        {
+            await _hubService.SendSeatBookedNotification(booking.SeatId);
+        }
         await _hubService.SendDashboardUpdate();
 
         var userEmail = await _context.Users
-            .Where(u => u.UserName == booking.UserId)
+            .Where(u => u.UserName == order.UserId)
             .Select(u => u.Email)
             .FirstOrDefaultAsync(cancellationToken);
 
         if (!string.IsNullOrEmpty(userEmail))
         {
-            var emailBody = _emailTemplateService.GetPaymentSuccessEmailTemplate(
-                booking.UserId,
-                booking.Seat.SeatNumber,
-                booking.AmountPaid);
-
-            byte[] ticketPdfBytes = await _ticketPdfService.GenerateTicketPdfAsync(
-                eventName: booking.Seat.Event.Name,
-                venue: booking.Seat.Event.Venue,
-                date: booking.Seat.Event.EventDate.ToString("f"),
-                seatNumber: booking.Seat.SeatNumber,
-                username: booking.UserId,
-                seatId: booking.SeatId
-            );
-
-            try
+            foreach (var booking in order.Bookings)
             {
-                await _emailService.SendEmailWithAttachmentAsync(
-                    userEmail,
-                    "Hussein Stadium - Official Ticket",
-                    emailBody,
-                    ticketPdfBytes,
-                    $"Ticket_{booking.Seat.SeatNumber}.pdf");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Email Failed to {userEmail}: {ex.Message}");
+                var emailBody = _emailTemplateService.GetPaymentSuccessEmailTemplate(
+                    order.UserId,
+                    booking.Seat.SeatNumber,
+                    booking.AmountPaid);
+
+                byte[] ticketPdfBytes = await _ticketPdfService.GenerateTicketPdfAsync(
+                    eventName: booking.Seat.Event.Name,
+                    venue: booking.Seat.Event.Venue,
+                    date: booking.Seat.Event.EventDate.ToString("f"),
+                    seatNumber: booking.Seat.SeatNumber,
+                    username: order.UserId,
+                    seatId: booking.SeatId
+                );
+
+                try
+                {
+                    await _emailService.SendEmailWithAttachmentAsync(
+                        userEmail,
+                        $"Hussein Stadium - Official Ticket (Seat {booking.Seat.SeatNumber})",
+                        emailBody,
+                        ticketPdfBytes,
+                        $"Ticket_{booking.Seat.SeatNumber}.pdf");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Email Failed to {userEmail}: {ex.Message}");
+                }
             }
         }
 

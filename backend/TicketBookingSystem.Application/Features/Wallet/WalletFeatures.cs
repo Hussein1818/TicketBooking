@@ -1,6 +1,8 @@
 ﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TicketBookingSystem.Application.Interfaces;
@@ -67,7 +69,7 @@ public class AddFundsHandler : IRequestHandler<AddFundsCommand, decimal>
 
 public class PayWithWalletCommand : IRequest<bool>
 {
-    public int SeatId { get; set; }
+    public List<int> BookingIds { get; set; } = new();
     public string Username { get; set; } = string.Empty;
     public string? PromoCode { get; set; }
 }
@@ -87,15 +89,19 @@ public class PayWithWalletHandler : IRequestHandler<PayWithWalletCommand, bool>
 
     public async Task<bool> Handle(PayWithWalletCommand request, CancellationToken ct)
     {
+        if (!request.BookingIds.Any()) return false;
+
         var user = await _context.Users.FirstOrDefaultAsync(u => u.UserName == request.Username, ct);
 
-        var booking = await _context.Bookings
+        var bookings = await _context.Bookings
             .Include(b => b.Seat)
-            .FirstOrDefaultAsync(b => b.SeatId == request.SeatId && b.UserId == request.Username && b.Seat.Status == SeatStatus.Locked, ct);
+            .Where(b => request.BookingIds.Contains(b.Id) && b.UserId == request.Username && b.Seat.Status == SeatStatus.Locked)
+            .ToListAsync(ct);
 
-        if (user == null || booking == null) return false;
+        if (user == null || bookings.Count != request.BookingIds.Count) return false;
 
-        decimal finalPrice = booking.Seat.Price;
+        decimal totalBasePrice = bookings.Sum(b => b.Seat.Price);
+        decimal originalTotalEgp = totalBasePrice;
 
         if (user.Tier != SubscriptionTier.None && user.TierExpiryDate.HasValue && user.TierExpiryDate.Value > DateTime.UtcNow)
         {
@@ -106,7 +112,7 @@ public class PayWithWalletHandler : IRequestHandler<PayWithWalletCommand, bool>
                 SubscriptionTier.VIP => 0.30m,
                 _ => 0m
             };
-            finalPrice -= finalPrice * discount;
+            totalBasePrice -= totalBasePrice * discount;
         }
 
         if (!string.IsNullOrWhiteSpace(request.PromoCode))
@@ -114,21 +120,28 @@ public class PayWithWalletHandler : IRequestHandler<PayWithWalletCommand, bool>
             var promo = await _context.PromoCodes.FirstOrDefaultAsync(p => p.Code == request.PromoCode && p.IsActive, ct);
             if (promo != null && promo.CurrentUsage < promo.MaxUsage)
             {
-                finalPrice -= finalPrice * (promo.DiscountPercentage / 100);
+                totalBasePrice -= totalBasePrice * (promo.DiscountPercentage / 100);
                 promo.CurrentUsage += 1;
             }
         }
 
-        if (!user.DeductFunds(finalPrice)) return false;
+        if (!user.DeductFunds(totalBasePrice)) return false;
 
-        booking.AmountPaid = finalPrice;
-        booking.Seat.Status = SeatStatus.Booked;
-        _context.AuditLogs.Add(new AuditLog { Username = request.Username, Action = "Ticket Purchase", Details = $"Bought seat {request.SeatId} with wallet." });
-
-        if (!string.IsNullOrEmpty(booking.JobId))
+        foreach (var booking in bookings)
         {
-            _jobService.CancelJob(booking.JobId);
+            if (originalTotalEgp > 0)
+            {
+                booking.AmountPaid = Math.Round((booking.Seat.Price / originalTotalEgp) * totalBasePrice, 2);
+            }
+            booking.Seat.Status = SeatStatus.Booked;
+
+            if (!string.IsNullOrEmpty(booking.JobId))
+            {
+                _jobService.CancelJob(booking.JobId);
+            }
         }
+
+        _context.AuditLogs.Add(new AuditLog { Username = request.Username, Action = "Cart Purchase", Details = $"Bought {bookings.Count} seats with wallet." });
 
         try
         {
@@ -139,7 +152,11 @@ public class PayWithWalletHandler : IRequestHandler<PayWithWalletCommand, bool>
             return false;
         }
 
-        await _hub.SendSeatBookedNotification(request.SeatId);
+        foreach (var booking in bookings)
+        {
+            await _hub.SendSeatBookedNotification(booking.SeatId);
+        }
+
         await _hub.SendDashboardUpdate();
 
         return true;
