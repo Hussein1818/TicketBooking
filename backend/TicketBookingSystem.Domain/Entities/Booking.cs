@@ -13,6 +13,9 @@ public class Booking
     public decimal ExchangeRate { get; set; } = 1.0m;
     public string? JobId { get; set; }
 
+    public int? OrderId { get; set; }
+
     public Seat Seat { get; set; } = null!;
     public User User { get; set; } = null!;
+    public Order? Order { get; set; }
 }
