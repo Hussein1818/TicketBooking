@@ -8,16 +8,15 @@ using TicketBookingSystem.Domain.Entities;
 
 namespace TicketBookingSystem.Application.Features.Events.Commands;
 
-
 public class ManageEventCommand : IRequest<int>
 {
     public int Id { get; set; }
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     public DateTime EventDate { get; set; }
-    public string Venue { get; set; }
+    public string Venue { get; set; } = string.Empty;
     public bool IsClosed { get; set; }
     public int MaxTicketsPerUser { get; set; }
-    public string Category { get; set; }
+    public string Category { get; set; } = "General";
 }
 
 public class ManageEventCommandHandler : IRequestHandler<ManageEventCommand, int>
@@ -37,35 +36,19 @@ public class ManageEventCommandHandler : IRequestHandler<ManageEventCommand, int
 
         if (request.Id > 0)
         {
-            
             eventEntity = await _context.Events.FindAsync(new object[] { request.Id }, cancellationToken);
             if (eventEntity == null) throw new Exception("Event not found");
 
-            eventEntity.Name = request.Name;
-            eventEntity.EventDate = request.EventDate;
-            eventEntity.Venue = request.Venue;
-            eventEntity.IsClosed = request.IsClosed;
-            eventEntity.MaxTicketsPerUser = request.MaxTicketsPerUser;
-            eventEntity.Category = request.Category;
+            eventEntity.UpdateDetails(request.Name, request.EventDate, request.Venue, request.IsClosed, request.MaxTicketsPerUser, request.Category);
         }
         else
         {
-            
-            eventEntity = new Event
-            {
-                Name = request.Name,
-                EventDate = request.EventDate,
-                Venue = request.Venue,
-                IsClosed = request.IsClosed,
-                MaxTicketsPerUser = request.MaxTicketsPerUser,
-                Category = request.Category
-            };
+            eventEntity = new Event(request.Name, request.EventDate, request.Venue, request.MaxTicketsPerUser, request.Category);
             _context.Events.Add(eventEntity);
         }
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        
         await _cache.RemoveAsync("Events_List", cancellationToken);
 
         if (request.Id > 0)

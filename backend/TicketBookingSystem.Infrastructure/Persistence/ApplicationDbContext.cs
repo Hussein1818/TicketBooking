@@ -27,6 +27,10 @@ public class ApplicationDbContext : IdentityDbContext<User>, IApplicationDbConte
             .Property(s => s.Version)
             .IsRowVersion();
 
+        modelBuilder.Entity<User>()
+            .Property(u => u.Version)
+            .IsRowVersion();
+
         modelBuilder.Entity<Seat>()
             .HasOne(s => s.Event)
             .WithMany(e => e.Seats)

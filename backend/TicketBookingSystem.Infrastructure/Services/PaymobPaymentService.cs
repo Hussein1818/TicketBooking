@@ -34,6 +34,7 @@ public class PaymobPaymentService : IPaymentService
         var token = authResult!.Token;
 
         var amountCents = (int)(amount * 100);
+
         var orderResponse = await _httpClient.PostAsJsonAsync("https://accept.paymob.com/api/ecommerce/orders", new
         {
             auth_token = token,
@@ -42,10 +43,11 @@ public class PaymobPaymentService : IPaymentService
             currency = currency,
             items = new object[] { }
         });
+
         var orderResult = await orderResponse.Content.ReadFromJsonAsync<PaymobOrderResponse>();
         var orderId = orderResult!.Id.ToString();
 
-        var username = _currentUserService.Username ?? "Customer";
+        var username = _currentUserService.Username ?? "User";
         var email = _currentUserService.Email ?? "customer@ticketbooking.com";
 
         var paymentKeyResponse = await _httpClient.PostAsJsonAsync("https://accept.paymob.com/api/acceptance/payment_keys", new
@@ -73,6 +75,7 @@ public class PaymobPaymentService : IPaymentService
             currency = currency,
             integration_id = int.Parse(integrationId!)
         });
+
         var paymentKeyResult = await paymentKeyResponse.Content.ReadFromJsonAsync<PaymobPaymentKeyResponse>();
         var paymentToken = paymentKeyResult!.Token;
 

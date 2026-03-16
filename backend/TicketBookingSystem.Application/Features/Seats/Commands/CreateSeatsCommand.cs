@@ -68,15 +68,18 @@ public class CreateSeatsCommandHandler : IRequestHandler<CreateSeatsCommand, int
         _context.Seats.AddRange(seats);
         await _context.SaveChangesAsync(cancellationToken);
 
+        int totalNewSeats = request.RegularSeatsCount + request.VipSeatsCount;
         var waitlistUsers = await _context.Waitlists
             .Where(w => w.EventId == request.EventId)
+            .OrderBy(w => w.Id)
+            .Take(totalNewSeats)
             .ToListAsync(cancellationToken);
 
         if (waitlistUsers.Any())
         {
             var emailTasks = waitlistUsers.Select(w => _emailService.SendEmailAsync(
                 w.Email,
-                "Tickets Available! 🎟️",
+                "Tickets Available!",
                 $"Good news! New tickets just dropped for {ev.Name}. Hurry up and book your seat now before they are gone!"
             ));
 

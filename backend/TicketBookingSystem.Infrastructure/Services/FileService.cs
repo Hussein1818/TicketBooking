@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using System.IO;
 using System.Threading.Tasks;
 using TicketBookingSystem.Application.Interfaces;
@@ -15,11 +14,10 @@ public class FileService : IFileService
         _env = env;
     }
 
-    public async Task<string> UploadProfilePictureAsync(IFormFile file, string userId)
+    public async Task<string> UploadProfilePictureAsync(Stream fileStream, string extension, string userId)
     {
-        if (file == null || file.Length == 0) return string.Empty;
+        if (fileStream == null || fileStream.Length == 0) return string.Empty;
 
-        
         var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
         var uploadsFolder = Path.Combine(webRoot, "Uploads", "Profiles");
 
@@ -28,13 +26,12 @@ public class FileService : IFileService
             Directory.CreateDirectory(uploadsFolder);
         }
 
-        var fileExtension = Path.GetExtension(file.FileName);
-        var uniqueFileName = $"Profile_{userId}{fileExtension}";
+        var uniqueFileName = $"Profile_{userId}{extension}";
         var filePath = Path.Combine(uploadsFolder, uniqueFileName);
 
-        using (var fileStream = new FileStream(filePath, FileMode.Create))
+        using (var destStream = new FileStream(filePath, FileMode.Create))
         {
-            await file.CopyToAsync(fileStream);
+            await fileStream.CopyToAsync(destStream);
         }
 
         return $"/Uploads/Profiles/{uniqueFileName}";

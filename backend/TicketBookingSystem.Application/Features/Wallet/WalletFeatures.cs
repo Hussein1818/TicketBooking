@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using TicketBookingSystem.Application.Interfaces;
@@ -47,18 +48,27 @@ public class AddFundsHandler : IRequestHandler<AddFundsCommand, decimal>
     public async Task<decimal> Handle(AddFundsCommand request, CancellationToken ct)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.UserName == request.Username, ct);
-        if (user == null) return 0;
+        if (user == null) throw new Exception("User not found");
 
         user.AddFunds(request.Amount);
-        await _context.SaveChangesAsync(ct);
+
+        try
+        {
+            await _context.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new Exception("Concurrency conflict occurred while adding funds.");
+        }
+
         return user.WalletBalance;
     }
 }
 
 public class PayWithWalletCommand : IRequest<bool>
 {
-    public string Username { get; set; } = string.Empty;
     public int SeatId { get; set; }
+    public string Username { get; set; } = string.Empty;
     public string? PromoCode { get; set; }
 }
 
@@ -66,11 +76,13 @@ public class PayWithWalletHandler : IRequestHandler<PayWithWalletCommand, bool>
 {
     private readonly IApplicationDbContext _context;
     private readonly ITicketHubService _hub;
+    private readonly IJobService _jobService;
 
-    public PayWithWalletHandler(IApplicationDbContext context, ITicketHubService hub)
+    public PayWithWalletHandler(IApplicationDbContext context, ITicketHubService hub, IJobService jobService)
     {
         _context = context;
         _hub = hub;
+        _jobService = jobService;
     }
 
     public async Task<bool> Handle(PayWithWalletCommand request, CancellationToken ct)
@@ -100,7 +112,20 @@ public class PayWithWalletHandler : IRequestHandler<PayWithWalletCommand, bool>
         booking.Seat.Status = SeatStatus.Booked;
         _context.AuditLogs.Add(new AuditLog { Username = request.Username, Action = "Ticket Purchase", Details = $"Bought seat {request.SeatId} with wallet." });
 
-        await _context.SaveChangesAsync(ct);
+        if (!string.IsNullOrEmpty(booking.JobId))
+        {
+            _jobService.CancelJob(booking.JobId);
+        }
+
+        try
+        {
+            await _context.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return false;
+        }
+
         await _hub.SendSeatBookedNotification(request.SeatId);
         await _hub.SendDashboardUpdate();
 

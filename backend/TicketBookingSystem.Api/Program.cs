@@ -108,7 +108,7 @@ builder.Services.AddScoped<IApplicationDbContext>(provider
     => provider.GetRequiredService<ApplicationDbContext>());
 
 builder.Services.AddMediatR(cfg => {
-    cfg.RegisterServicesFromAssembly(typeof(TicketBookingSystem.Application.Features.Events.Commands.CreateEventCommand).Assembly);
+    cfg.RegisterServicesFromAssembly(typeof(TicketBookingSystem.Application.Features.Events.Commands.ManageEventCommand).Assembly);
     cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 });
 

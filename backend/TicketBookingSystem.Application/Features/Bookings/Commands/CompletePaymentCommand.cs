@@ -21,27 +21,29 @@ public class CompletePaymentCommandHandler : IRequestHandler<CompletePaymentComm
     private readonly ITicketHubService _hubService;
     private readonly IEmailService _emailService;
     private readonly IEmailTemplateService _emailTemplateService;
-    private readonly ITicketPdfService _ticketPdfService; 
+    private readonly ITicketPdfService _ticketPdfService;
+    private readonly IJobService _jobService;
 
     public CompletePaymentCommandHandler(
         IApplicationDbContext context,
         ITicketHubService hubService,
         IEmailService emailService,
         IEmailTemplateService emailTemplateService,
-        ITicketPdfService ticketPdfService)
+        ITicketPdfService ticketPdfService,
+        IJobService jobService)
     {
         _context = context;
         _hubService = hubService;
         _emailService = emailService;
         _emailTemplateService = emailTemplateService;
         _ticketPdfService = ticketPdfService;
+        _jobService = jobService;
     }
 
     public async Task<bool> Handle(CompletePaymentCommand request, CancellationToken cancellationToken)
     {
         if (!request.Success) return false;
 
-        
         var booking = await _context.Bookings
             .Include(b => b.Seat)
                 .ThenInclude(s => s.Event)
@@ -56,13 +58,18 @@ public class CompletePaymentCommandHandler : IRequestHandler<CompletePaymentComm
             booking.AmountPaid = booking.Seat.Price;
         }
 
+        if (!string.IsNullOrEmpty(booking.JobId))
+        {
+            _jobService.CancelJob(booking.JobId);
+        }
+
         try
         {
             await _context.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateConcurrencyException)
         {
-            return true; 
+            return true;
         }
 
         await _hubService.SendSeatBookedNotification(booking.SeatId);
@@ -80,22 +87,20 @@ public class CompletePaymentCommandHandler : IRequestHandler<CompletePaymentComm
                 booking.Seat.SeatNumber,
                 booking.AmountPaid);
 
-           
             byte[] ticketPdfBytes = await _ticketPdfService.GenerateTicketPdfAsync(
                 eventName: booking.Seat.Event.Name,
                 venue: booking.Seat.Event.Venue,
-                date: booking.Seat.Event.EventDate.ToString("f"), 
+                date: booking.Seat.Event.EventDate.ToString("f"),
                 seatNumber: booking.Seat.SeatNumber,
                 username: booking.UserId,
-                ticketId: booking.Id.ToString()
+                seatId: booking.SeatId
             );
 
             try
             {
-                
                 await _emailService.SendEmailWithAttachmentAsync(
                     userEmail,
-                    "Hussein Stadium - Official Ticket 🎟️",
+                    "Hussein Stadium - Official Ticket",
                     emailBody,
                     ticketPdfBytes,
                     $"Ticket_{booking.Seat.SeatNumber}.pdf");
