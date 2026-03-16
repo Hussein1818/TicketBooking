@@ -12,8 +12,10 @@ public class User : IdentityUser
     public string NationalId { get; set; } = string.Empty;
     public string ProfilePictureUrl { get; set; } = string.Empty;
     public string FanIdNumber { get; set; } = string.Empty;
-
     public byte[] Version { get; set; } = Array.Empty<byte>();
+
+    public SubscriptionTier Tier { get; private set; } = SubscriptionTier.None;
+    public DateTime? TierExpiryDate { get; private set; }
 
     public void AddFunds(decimal amount)
     {
@@ -32,5 +34,11 @@ public class User : IdentityUser
 
         WalletBalance -= amount;
         return true;
+    }
+
+    public void UpgradeTier(SubscriptionTier tier, int months)
+    {
+        Tier = tier;
+        TierExpiryDate = DateTime.UtcNow.AddMonths(months);
     }
 }

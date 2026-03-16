@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using TicketBookingSystem.Application.Interfaces;
 using TicketBookingSystem.Domain.Enums;
+using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -38,10 +39,25 @@ public class ConfirmBookingCommandHandler : IRequestHandler<ConfirmBookingComman
             .OrderByDescending(b => b.BookingDate)
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (userBooking == null)
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.UserName == request.UserId, cancellationToken);
+
+        if (userBooking == null || user == null)
             return string.Empty;
 
         decimal finalPrice = seat.Price;
+
+        if (user.Tier != SubscriptionTier.None && user.TierExpiryDate.HasValue && user.TierExpiryDate.Value > DateTime.UtcNow)
+        {
+            decimal discount = user.Tier switch
+            {
+                SubscriptionTier.Silver => 0.10m,
+                SubscriptionTier.Gold => 0.20m,
+                SubscriptionTier.VIP => 0.30m,
+                _ => 0m
+            };
+            finalPrice -= finalPrice * discount;
+        }
 
         if (!string.IsNullOrWhiteSpace(request.PromoCode))
         {
