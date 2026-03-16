@@ -3,9 +3,9 @@
 ## 📌 Overview
 A comprehensive, real-time ticket booking system built with **.NET Core**. The project strictly follows **Clean Architecture** principles and implements the **CQRS** (Command Query Responsibility Segregation) pattern to ensure scalability, maintainability, and clear separation of concerns.
 
-##  Architecture & Technologies
+## 🛠️ Architecture & Technologies
 - **Backend:** .NET (C#)
-- **Architecture:** Clean Architecture ( Domain , Application, Infrastructure, API).
+- **Architecture:** Clean Architecture (Rich Domain Models, Application, Infrastructure, API).
 - **Design Pattern:** CQRS using **MediatR** & **FluentValidation**.
 - **Real-Time Communication:** **SignalR** (Secured with JWT for live seat locking and booking updates).
 - **Background Jobs:** **Hangfire** (for releasing unpaid locked seats after a 5-minute timeout).
@@ -61,6 +61,16 @@ A comprehensive, real-time ticket booking system built with **.NET Core**. The p
 ### 9.  Admin Dashboard & System Logs
 - Advanced, fail-safe analytics for admins: Total Revenue (handles empty states dynamically), Seat Fill Rate, Top Selling Events, and exact Customer tracking.
 - Complete Audit Trail logging for critical actions like wallet transactions and ticket transfers.
+
+### 10.  Role-Based Access Control (RBAC) & Gate Scanning
+- Implemented strict RBAC with distinct roles: **Customer, Staff, and Admin**.
+- Dedicated **Staff** role created exclusively for gate security personnel, provisioned solely by Admins to prevent unauthorized registrations.
+- Staff members have restricted access to the ticket validation scanner endpoints, ensuring they cannot access dashboards, financial data, or administrative operations.
+
+### 11.  VIP Memberships & Automated Discounts
+- Users can upgrade their accounts to premium subscription tiers (**Silver, Gold, VIP**) using their virtual wallet funds.
+- The system dynamically calculates and applies automated discounts (e.g., 10%, 20%, 30%) during the checkout process based on the user's active tier and its expiration date.
+- Centralized pricing logic ensures discounts are consistently enforced across all payment methods, including the internal Wallet and external gateways like Paymob.
 
 ---
 
