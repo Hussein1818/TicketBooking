@@ -76,7 +76,13 @@ A comprehensive, real-time ticket booking system built with **.NET Core**. The p
 - The system supports seamless international transactions by accepting multiple currencies (e.g., EGP, USD, SAR) during the checkout process.
 - Exchange rates are dynamically converted via an abstracted `ICurrencyConverterService` and immutably stored within each booking record to preserve historical financial accuracy.
 - **Fail-Safe Analytics:** The Admin Dashboard aggregates revenue intelligently by mathematically unifying all disparate currencies back to the base currency (EGP) using the exact exchange rate captured at the time of transaction, absolutely preventing multi-currency aggregation bugs.
-  
+
+  ### 13. 🛒 Shopping Cart & Unified Checkout
+- **Cart Aggregation:** Users can lock multiple seats across different events and seamlessly add them to a unified shopping cart.
+- **Order Entity Pattern:** The system intelligently aggregates multiple independent `Booking` entities under a single parent `Order` entity to streamline the checkout process.
+- **Gateway Synchronization:** Provides a single, unified checkout session for external payment gateways (e.g., Paymob), completely eliminating race conditions and ensuring atomic transactions for multi-item purchases.
+- **Proportional Financial Distribution:** Upon successful payment, the system accurately distributes the total paid amount—including any applied VIP discounts or promo codes—proportionally across all individual bookings within the cart.
+
 ---
 
 ##  Project Structure
