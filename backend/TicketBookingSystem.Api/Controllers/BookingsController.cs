@@ -38,10 +38,17 @@ public class BookingsController : ControllerBase
 
         return Ok(new { PaymentUrl = paymentUrl });
     }
+
+    
     [Authorize]
-    [HttpGet("my-tickets/{userId}")]
-    public async Task<IActionResult> GetMyTickets(string userId)
+    [HttpGet("my-tickets")]
+    public async Task<IActionResult> GetMyTickets()
     {
+        var userId = User.Identity?.Name;
+
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
         var result = await _mediator.Send(new GetUserTicketsQuery { UserId = userId });
         return Ok(result);
     }
@@ -80,25 +87,35 @@ public class BookingsController : ControllerBase
         return Ok(result);
     }
 
-  
+    
     [Authorize]
-    [HttpDelete("cancel/{bookingId}/{userId}")]
-    public async Task<IActionResult> CancelBooking(int bookingId, string userId)
+    [HttpDelete("cancel/{bookingId}")]
+    public async Task<IActionResult> CancelBooking(int bookingId)
     {
+        var userId = User.Identity?.Name;
+
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
         var success = await _mediator.Send(new CancelBookingCommand { BookingId = bookingId, UserId = userId });
 
-        if (!success) return BadRequest(new { Message = "Cannot cancel this booking. Event may have already started." });
+        if (!success)
+            return BadRequest(new { Message = "Cannot cancel this booking. Event may have already started." });
 
         return Ok(new { Message = "Booking cancelled successfully." });
     }
+
     [Authorize]
     [HttpPost("transfer")]
     public async Task<IActionResult> TransferTicket([FromBody] TicketBookingSystem.Application.Features.Bookings.Commands.TransferTicketCommand command)
     {
         command.FromUsername = User.Identity?.Name ?? command.FromUsername;
+
         var success = await _mediator.Send(command);
 
-        if (!success) return BadRequest(new { Message = "Transfer failed. Please check the target username." });
+        if (!success)
+            return BadRequest(new { Message = "Transfer failed. Please check the target username." });
+
         return Ok(new { Message = "Ticket transferred successfully! 🎁" });
     }
 }

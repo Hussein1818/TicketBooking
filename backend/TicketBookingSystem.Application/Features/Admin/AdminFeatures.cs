@@ -27,6 +27,7 @@ public class TopCustomerDto { public string Username { get; set; } = string.Empt
 public class GetAdvancedDashboardHandler : IRequestHandler<GetAdvancedDashboardQuery, AdvancedDashboardDto>
 {
     private readonly IApplicationDbContext _context;
+
     public GetAdvancedDashboardHandler(IApplicationDbContext context) => _context = context;
 
     public async Task<AdvancedDashboardDto> Handle(GetAdvancedDashboardQuery request, CancellationToken ct)
@@ -35,16 +36,15 @@ public class GetAdvancedDashboardHandler : IRequestHandler<GetAdvancedDashboardQ
 
         stats.TotalEvents = await _context.Events.CountAsync(ct);
         stats.TotalUsers = await _context.Users.CountAsync(ct);
-        stats.TotalBookedSeats = await _context.Seats.CountAsync(s => s.Status == TicketBookingSystem.Domain.Enums.SeatStatus.Booked, ct);
-        stats.TotalRevenue = await _context.Bookings.SumAsync(b => b.AmountPaid, ct);
+        stats.TotalBookedSeats = await _context.Bookings.CountAsync(ct);
 
-        var topEvents = await _context.Bookings
-            .Where(b => b.Seat.Status == TicketBookingSystem.Domain.Enums.SeatStatus.Booked)
-            .GroupBy(b => b.Seat.Event.Name)
-            .Select(g => new TopEventDto
+        stats.TotalRevenue = await _context.Bookings.SumAsync(b => (decimal?)b.AmountPaid, ct) ?? 0;
+
+        var topEvents = await _context.Events
+            .Select(e => new TopEventDto
             {
-                Name = g.Key,
-                Revenue = g.Sum(b => b.AmountPaid)
+                Name = e.Name,
+                Revenue = _context.Bookings.Where(b => b.Seat.EventId == e.Id).Sum(b => (decimal?)b.AmountPaid) ?? 0
             })
             .OrderByDescending(e => e.Revenue)
             .Take(5)
@@ -53,10 +53,10 @@ public class GetAdvancedDashboardHandler : IRequestHandler<GetAdvancedDashboardQ
         stats.TopEvents = topEvents;
 
         var topCustomers = await _context.Bookings
-            .GroupBy(b => b.UserId)
+            .GroupBy(b => b.User.UserName)
             .Select(g => new TopCustomerDto
             {
-                Username = g.Key,
+                Username = g.Key ?? "Unknown",
                 TicketsBought = g.Count()
             })
             .OrderByDescending(c => c.TicketsBought)
@@ -70,11 +70,19 @@ public class GetAdvancedDashboardHandler : IRequestHandler<GetAdvancedDashboardQ
 }
 
 public class GetSystemLogsQuery : IRequest<List<AuditLogDto>> { }
-public class AuditLogDto { public string Username { get; set; } = string.Empty; public string Action { get; set; } = string.Empty; public string Details { get; set; } = string.Empty; public DateTime Timestamp { get; set; } }
+
+public class AuditLogDto
+{
+    public string Username { get; set; } = string.Empty;
+    public string Action { get; set; } = string.Empty;
+    public string Details { get; set; } = string.Empty;
+    public DateTime Timestamp { get; set; }
+}
 
 public class GetSystemLogsHandler : IRequestHandler<GetSystemLogsQuery, List<AuditLogDto>>
 {
     private readonly IApplicationDbContext _context;
+
     public GetSystemLogsHandler(IApplicationDbContext context) => _context = context;
 
     public async Task<List<AuditLogDto>> Handle(GetSystemLogsQuery request, CancellationToken ct)

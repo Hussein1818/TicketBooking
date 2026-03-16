@@ -9,6 +9,7 @@ public class Booking
     public string UserId { get; set; } = string.Empty;
     public DateTime BookingDate { get; set; }
     public decimal AmountPaid { get; set; }
+    public string? JobId { get; set; }
 
     public Seat Seat { get; set; } = null!;
     public User User { get; set; } = null!;

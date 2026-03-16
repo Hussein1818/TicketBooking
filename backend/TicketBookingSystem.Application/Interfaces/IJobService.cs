@@ -1,6 +1,9 @@
-﻿namespace TicketBookingSystem.Application.Interfaces;
+﻿using System;
+
+namespace TicketBookingSystem.Application.Interfaces;
 
 public interface IJobService
 {
-    void ScheduleSeatRelease(int seatId, TimeSpan delay);
+    string ScheduleSeatRelease(int seatId, TimeSpan delay);
+    bool CancelJob(string jobId);
 }

@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using System;
 using System.Linq;
 using System.Threading;
@@ -23,12 +24,21 @@ public class BookSeatCommandHandler : IRequestHandler<BookSeatCommand, int>
     private readonly IApplicationDbContext _context;
     private readonly ITicketHubService _hubService;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IJobService _jobService;
+    private readonly IDistributedCache _cache;
 
-    public BookSeatCommandHandler(IApplicationDbContext context, ITicketHubService hubService, ICurrentUserService currentUserService)
+    public BookSeatCommandHandler(
+        IApplicationDbContext context,
+        ITicketHubService hubService,
+        ICurrentUserService currentUserService,
+        IJobService jobService,
+        IDistributedCache cache)
     {
         _context = context;
         _hubService = hubService;
         _currentUserService = currentUserService;
+        _jobService = jobService;
+        _cache = cache;
     }
 
     public async Task<int> Handle(BookSeatCommand request, CancellationToken cancellationToken)
@@ -44,8 +54,8 @@ public class BookSeatCommandHandler : IRequestHandler<BookSeatCommand, int>
         if (seat == null)
             throw new NotFoundException(nameof(Seat), request.SeatId);
 
-        if (seat.Event.EventDate <= DateTime.UtcNow || seat.Event.IsClosed)
-            throw new BadRequestException("The event is closed.");
+        if (seat.Event.IsClosed || seat.Event.EventDate <= DateTime.UtcNow)
+            throw new BadRequestException("Event is closed or already past.");
 
         if (seat.Status != SeatStatus.Available)
             throw new BadRequestException("Seat is not available.");
@@ -60,12 +70,18 @@ public class BookSeatCommandHandler : IRequestHandler<BookSeatCommand, int>
 
         seat.Status = SeatStatus.Locked;
 
+        var lockDuration = TimeSpan.FromMinutes(AppConstants.SeatLockDurationMinutes);
+        var expiresAt = DateTime.UtcNow.Add(lockDuration);
+
+        var jobId = _jobService.ScheduleSeatRelease(seat.Id, lockDuration);
+
         var booking = new Booking
         {
             SeatId = seat.Id,
             UserId = currentUserId,
             BookingDate = DateTime.UtcNow,
-            AmountPaid = 0
+            AmountPaid = 0,
+            JobId = jobId
         };
 
         _context.Bookings.Add(booking);
@@ -79,8 +95,7 @@ public class BookSeatCommandHandler : IRequestHandler<BookSeatCommand, int>
             throw new ConflictException("This seat was just booked by someone else. Please choose another seat.");
         }
 
-        var lockDuration = TimeSpan.FromMinutes(AppConstants.SeatLockDurationMinutes);
-        var expiresAt = DateTime.UtcNow.Add(lockDuration);
+        await _cache.RemoveAsync($"Seats_Event_{seat.EventId}", cancellationToken);
 
         await _hubService.SendSeatLockedNotification(seat.Id, expiresAt);
         await _hubService.SendDashboardUpdate();

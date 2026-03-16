@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using TicketBookingSystem.Application.Interfaces;
 using TicketBookingSystem.Domain.Enums;
 using System;
@@ -20,12 +21,18 @@ public class CancelBookingCommandHandler : IRequestHandler<CancelBookingCommand,
     private readonly IApplicationDbContext _context;
     private readonly ITicketHubService _hubService;
     private readonly IEmailService _emailService;
+    private readonly IDistributedCache _cache;
 
-    public CancelBookingCommandHandler(IApplicationDbContext context, ITicketHubService hubService, IEmailService emailService)
+    public CancelBookingCommandHandler(
+        IApplicationDbContext context,
+        ITicketHubService hubService,
+        IEmailService emailService,
+        IDistributedCache cache)
     {
         _context = context;
         _hubService = hubService;
         _emailService = emailService;
+        _cache = cache;
     }
 
     public async Task<bool> Handle(CancelBookingCommand request, CancellationToken cancellationToken)
@@ -53,23 +60,25 @@ public class CancelBookingCommandHandler : IRequestHandler<CancelBookingCommand,
         _context.Bookings.Remove(booking);
         await _context.SaveChangesAsync(cancellationToken);
 
+        await _cache.RemoveAsync($"Seats_Event_{eventId}", cancellationToken);
+
         await _hubService.SendSeatAvailableNotification(booking.SeatId);
         await _hubService.SendDashboardUpdate();
 
-        var waitlistUsers = await _context.Waitlists
+        var waitlistUser = await _context.Waitlists
             .Where(w => w.EventId == eventId)
-            .ToListAsync(cancellationToken);
+            .OrderBy(w => w.Id)
+            .FirstOrDefaultAsync(cancellationToken);
 
-        if (waitlistUsers.Any())
+        if (waitlistUser != null)
         {
-            var emailTasks = waitlistUsers.Select(w => _emailService.SendEmailAsync(
-                w.Email,
-                "Ticket Available! 🎟️",
+            await _emailService.SendEmailAsync(
+                waitlistUser.Email,
+                "Ticket Available!",
                 $"A ticket just became available for {eventName} due to a cancellation. Hurry and book it now!"
-            ));
-            await Task.WhenAll(emailTasks);
+            );
 
-            _context.Waitlists.RemoveRange(waitlistUsers);
+            _context.Waitlists.Remove(waitlistUser);
             await _context.SaveChangesAsync(cancellationToken);
         }
 
