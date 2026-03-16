@@ -38,13 +38,13 @@ public class GetAdvancedDashboardHandler : IRequestHandler<GetAdvancedDashboardQ
         stats.TotalUsers = await _context.Users.CountAsync(ct);
         stats.TotalBookedSeats = await _context.Bookings.CountAsync(ct);
 
-        stats.TotalRevenue = await _context.Bookings.SumAsync(b => (decimal?)b.AmountPaid, ct) ?? 0;
+        stats.TotalRevenue = await _context.Bookings.SumAsync(b => (decimal?)(b.AmountPaid * b.ExchangeRate), ct) ?? 0;
 
         var topEvents = await _context.Events
             .Select(e => new TopEventDto
             {
                 Name = e.Name,
-                Revenue = _context.Bookings.Where(b => b.Seat.EventId == e.Id).Sum(b => (decimal?)b.AmountPaid) ?? 0
+                Revenue = _context.Bookings.Where(b => b.Seat.EventId == e.Id).Sum(b => (decimal?)(b.AmountPaid * b.ExchangeRate)) ?? 0
             })
             .OrderByDescending(e => e.Revenue)
             .Take(5)

@@ -14,17 +14,23 @@ public class ConfirmBookingCommand : IRequest<string>
     public int SeatId { get; set; }
     public string UserId { get; set; } = string.Empty;
     public string? PromoCode { get; set; }
+    public string TargetCurrency { get; set; } = "EGP";
 }
 
 public class ConfirmBookingCommandHandler : IRequestHandler<ConfirmBookingCommand, string>
 {
     private readonly IApplicationDbContext _context;
     private readonly IPaymentService _paymentService;
+    private readonly ICurrencyConverterService _currencyConverter;
 
-    public ConfirmBookingCommandHandler(IApplicationDbContext context, IPaymentService paymentService)
+    public ConfirmBookingCommandHandler(
+        IApplicationDbContext context,
+        IPaymentService paymentService,
+        ICurrencyConverterService currencyConverter)
     {
         _context = context;
         _paymentService = paymentService;
+        _currencyConverter = currencyConverter;
     }
 
     public async Task<string> Handle(ConfirmBookingCommand request, CancellationToken cancellationToken)
@@ -45,7 +51,7 @@ public class ConfirmBookingCommandHandler : IRequestHandler<ConfirmBookingComman
         if (userBooking == null || user == null)
             return string.Empty;
 
-        decimal finalPrice = seat.Price;
+        decimal basePriceEgp = seat.Price;
 
         if (user.Tier != SubscriptionTier.None && user.TierExpiryDate.HasValue && user.TierExpiryDate.Value > DateTime.UtcNow)
         {
@@ -56,7 +62,7 @@ public class ConfirmBookingCommandHandler : IRequestHandler<ConfirmBookingComman
                 SubscriptionTier.VIP => 0.30m,
                 _ => 0m
             };
-            finalPrice -= finalPrice * discount;
+            basePriceEgp -= basePriceEgp * discount;
         }
 
         if (!string.IsNullOrWhiteSpace(request.PromoCode))
@@ -66,17 +72,25 @@ public class ConfirmBookingCommandHandler : IRequestHandler<ConfirmBookingComman
 
             if (promo != null && promo.CurrentUsage < promo.MaxUsage)
             {
-                decimal discountAmount = finalPrice * (promo.DiscountPercentage / 100);
-                finalPrice -= discountAmount;
-
+                decimal discountAmount = basePriceEgp * (promo.DiscountPercentage / 100);
+                basePriceEgp -= discountAmount;
                 promo.CurrentUsage += 1;
             }
         }
 
-        userBooking.AmountPaid = finalPrice;
+        string currency = string.IsNullOrWhiteSpace(request.TargetCurrency) ? "EGP" : request.TargetCurrency.ToUpper();
+        decimal toTargetRate = await _currencyConverter.GetExchangeRateAsync("EGP", currency);
+        decimal toEgpRate = await _currencyConverter.GetExchangeRateAsync(currency, "EGP");
+
+        decimal finalPriceInTargetCurrency = Math.Round(basePriceEgp * toTargetRate, 2);
+
+        userBooking.AmountPaid = finalPriceInTargetCurrency;
+        userBooking.Currency = currency;
+        userBooking.ExchangeRate = toEgpRate;
+
         await _context.SaveChangesAsync(cancellationToken);
 
-        var paymentUrl = await _paymentService.GetPaymentUrlAsync(userBooking.Id, finalPrice);
+        var paymentUrl = await _paymentService.GetPaymentUrlAsync(userBooking.Id, finalPriceInTargetCurrency, currency);
 
         return paymentUrl;
     }
