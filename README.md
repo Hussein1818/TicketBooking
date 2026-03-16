@@ -72,6 +72,11 @@ A comprehensive, real-time ticket booking system built with **.NET Core**. The p
 - The system dynamically calculates and applies automated discounts (e.g., 10%, 20%, 30%) during the checkout process based on the user's active tier and its expiration date.
 - Centralized pricing logic ensures discounts are consistently enforced across all payment methods, including the internal Wallet and external gateways like Paymob.
 
+### 12.  Multi-Currency Support & Dynamic Exchange Rates
+- The system supports seamless international transactions by accepting multiple currencies (e.g., EGP, USD, SAR) during the checkout process.
+- Exchange rates are dynamically converted via an abstracted `ICurrencyConverterService` and immutably stored within each booking record to preserve historical financial accuracy.
+- **Fail-Safe Analytics:** The Admin Dashboard aggregates revenue intelligently by mathematically unifying all disparate currencies back to the base currency (EGP) using the exact exchange rate captured at the time of transaction, absolutely preventing multi-currency aggregation bugs.
+  
 ---
 
 ##  Project Structure
