@@ -96,6 +96,19 @@ public class PayWithWalletHandler : IRequestHandler<PayWithWalletCommand, bool>
         if (user == null || booking == null) return false;
 
         decimal finalPrice = booking.Seat.Price;
+
+        if (user.Tier != SubscriptionTier.None && user.TierExpiryDate.HasValue && user.TierExpiryDate.Value > DateTime.UtcNow)
+        {
+            decimal discount = user.Tier switch
+            {
+                SubscriptionTier.Silver => 0.10m,
+                SubscriptionTier.Gold => 0.20m,
+                SubscriptionTier.VIP => 0.30m,
+                _ => 0m
+            };
+            finalPrice -= finalPrice * discount;
+        }
+
         if (!string.IsNullOrWhiteSpace(request.PromoCode))
         {
             var promo = await _context.PromoCodes.FirstOrDefaultAsync(p => p.Code == request.PromoCode && p.IsActive, ct);
