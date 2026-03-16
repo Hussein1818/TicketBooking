@@ -89,6 +89,7 @@ builder.Services.AddScoped<ITicketPdfService, TicketPdfService>();
 builder.Services.AddScoped<IFileService, FileService>();
 builder.Services.AddScoped<IFanIdPdfService, FanIdPdfService>();
 builder.Services.AddScoped<IPaymentService, PaymobPaymentService>();
+builder.Services.AddScoped<ICurrencyConverterService, CurrencyConverterService>();
 builder.Services.AddAuthorization();
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
