@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.SignalR;
+﻿using System;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.SignalR;
 using TicketBookingSystem.Infrastructure.Hubs;
 using TicketBookingSystem.Application.Interfaces;
 
@@ -35,5 +37,9 @@ public class TicketHubService : ITicketHubService
     public async Task SendDashboardUpdate()
     {
         await _hubContext.Clients.All.SendAsync("DashboardUpdate");
+    }
+    public async Task SendUserNotification(string userId, string message, string type)
+    {
+        await _hubContext.Clients.User(userId).SendAsync("ReceiveNotification", message, type);
     }
 }

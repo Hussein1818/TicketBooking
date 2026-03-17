@@ -20,6 +20,7 @@ public class ApplicationDbContext : IdentityDbContext<User>, IApplicationDbConte
     public DbSet<AuditLog> AuditLogs { get; set; }
 
     public DbSet<Order> Orders { get; set; }
+    public DbSet<Notification> Notifications { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -41,5 +42,10 @@ public class ApplicationDbContext : IdentityDbContext<User>, IApplicationDbConte
             .HasOne(b => b.Seat)
             .WithMany()
             .HasForeignKey(b => b.SeatId);
+
+        modelBuilder.Entity<Notification>()
+            .HasOne(n => n.User)
+            .WithMany()
+            .HasForeignKey(n => n.UserId);
     }
 }

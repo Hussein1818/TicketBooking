@@ -16,5 +16,6 @@ public interface IApplicationDbContext
     DbSet<Review> Reviews { get; set; }
     DbSet<AuditLog> AuditLogs { get; set; }
     DbSet<Order> Orders { get; set; }
+    DbSet<Notification> Notifications { get; set; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }
