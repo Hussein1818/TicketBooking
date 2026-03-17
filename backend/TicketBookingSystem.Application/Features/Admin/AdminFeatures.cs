@@ -9,7 +9,11 @@ using System.Threading.Tasks;
 
 namespace TicketBookingSystem.Application.Features.Admin;
 
-public class GetAdvancedDashboardQuery : IRequest<AdvancedDashboardDto> { }
+public class GetAdvancedDashboardQuery : IRequest<AdvancedDashboardDto>
+{
+    public string CurrentUserId { get; set; } = string.Empty;
+    public bool IsAdmin { get; set; }
+}
 
 public class AdvancedDashboardDto
 {
@@ -34,25 +38,47 @@ public class GetAdvancedDashboardHandler : IRequestHandler<GetAdvancedDashboardQ
     {
         var stats = new AdvancedDashboardDto();
 
-        stats.TotalEvents = await _context.Events.CountAsync(ct);
-        stats.TotalUsers = await _context.Users.CountAsync(ct);
-        stats.TotalBookedSeats = await _context.Bookings.CountAsync(ct);
+        var eventsQuery = _context.Events.AsQueryable();
+        var bookingsQuery = _context.Bookings.Include(b => b.Seat).ThenInclude(s => s.Event).AsQueryable();
 
-        stats.TotalRevenue = await _context.Bookings.SumAsync(b => (decimal?)(b.AmountPaid * b.ExchangeRate), ct) ?? 0;
+        
+        if (!request.IsAdmin)
+        {
+            eventsQuery = eventsQuery.Where(e => e.OrganizerId == request.CurrentUserId);
+            bookingsQuery = bookingsQuery.Where(b => b.Seat.Event.OrganizerId == request.CurrentUserId);
+        }
 
-        var topEvents = await _context.Events
+        stats.TotalEvents = await eventsQuery.CountAsync(ct);
+        stats.TotalBookedSeats = await bookingsQuery.CountAsync(ct);
+
+        
+        if (request.IsAdmin)
+        {
+            stats.TotalUsers = await _context.Users.CountAsync(ct);
+        }
+        else
+        {
+            stats.TotalUsers = await bookingsQuery.Select(b => b.UserId).Distinct().CountAsync(ct);
+        }
+
+        
+        stats.TotalRevenue = request.IsAdmin
+            ? await bookingsQuery.SumAsync(b => (decimal?)(b.PlatformFee * b.ExchangeRate), ct) ?? 0
+            : await bookingsQuery.SumAsync(b => (decimal?)(b.OrganizerEarnings * b.ExchangeRate), ct) ?? 0;
+
+        stats.TopEvents = await eventsQuery
             .Select(e => new TopEventDto
             {
                 Name = e.Name,
-                Revenue = _context.Bookings.Where(b => b.Seat.EventId == e.Id).Sum(b => (decimal?)(b.AmountPaid * b.ExchangeRate)) ?? 0
+                Revenue = request.IsAdmin
+                    ? _context.Bookings.Where(b => b.Seat.EventId == e.Id).Sum(b => (decimal?)(b.PlatformFee * b.ExchangeRate)) ?? 0
+                    : _context.Bookings.Where(b => b.Seat.EventId == e.Id).Sum(b => (decimal?)(b.OrganizerEarnings * b.ExchangeRate)) ?? 0
             })
             .OrderByDescending(e => e.Revenue)
             .Take(5)
             .ToListAsync(ct);
 
-        stats.TopEvents = topEvents;
-
-        var topCustomers = await _context.Bookings
+        stats.TopCustomers = await bookingsQuery
             .GroupBy(b => b.User.UserName)
             .Select(g => new TopCustomerDto
             {
@@ -62,8 +88,6 @@ public class GetAdvancedDashboardHandler : IRequestHandler<GetAdvancedDashboardQ
             .OrderByDescending(c => c.TicketsBought)
             .Take(5)
             .ToListAsync(ct);
-
-        stats.TopCustomers = topCustomers;
 
         return stats;
     }
