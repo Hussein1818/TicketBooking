@@ -17,6 +17,10 @@ public class ManageEventCommand : IRequest<int>
     public bool IsClosed { get; set; }
     public int MaxTicketsPerUser { get; set; }
     public string Category { get; set; } = "General";
+
+    // Security Fields
+    public string CurrentUserId { get; set; } = string.Empty;
+    public bool IsAdmin { get; set; }
 }
 
 public class ManageEventCommandHandler : IRequestHandler<ManageEventCommand, int>
@@ -39,16 +43,19 @@ public class ManageEventCommandHandler : IRequestHandler<ManageEventCommand, int
             eventEntity = await _context.Events.FindAsync(new object[] { request.Id }, cancellationToken);
             if (eventEntity == null) throw new Exception("Event not found");
 
+            // Anti-IDOR Check: Only Admin or the Event Owner can update it
+            if (!request.IsAdmin && eventEntity.OrganizerId != request.CurrentUserId)
+                throw new UnauthorizedAccessException("You don't have permission to modify this event.");
+
             eventEntity.UpdateDetails(request.Name, request.EventDate, request.Venue, request.IsClosed, request.MaxTicketsPerUser, request.Category);
         }
         else
         {
-            eventEntity = new Event(request.Name, request.EventDate, request.Venue, request.MaxTicketsPerUser, request.Category);
+            eventEntity = new Event(request.Name, request.EventDate, request.Venue, request.MaxTicketsPerUser, request.Category, request.CurrentUserId);
             _context.Events.Add(eventEntity);
         }
 
         await _context.SaveChangesAsync(cancellationToken);
-
         await _cache.RemoveAsync("Events_List", cancellationToken);
 
         if (request.Id > 0)

@@ -50,7 +50,9 @@ public class AddFundsHandler : IRequestHandler<AddFundsCommand, decimal>
     public async Task<decimal> Handle(AddFundsCommand request, CancellationToken ct)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.UserName == request.Username, ct);
-        if (user == null) throw new Exception("User not found");
+
+        if (user == null)
+            throw new Exception("User not found");
 
         user.AddFunds(request.Amount);
 
@@ -89,7 +91,8 @@ public class PayWithWalletHandler : IRequestHandler<PayWithWalletCommand, bool>
 
     public async Task<bool> Handle(PayWithWalletCommand request, CancellationToken ct)
     {
-        if (!request.BookingIds.Any()) return false;
+        if (!request.BookingIds.Any())
+            return false;
 
         var user = await _context.Users.FirstOrDefaultAsync(u => u.UserName == request.Username, ct);
 
@@ -98,7 +101,8 @@ public class PayWithWalletHandler : IRequestHandler<PayWithWalletCommand, bool>
             .Where(b => request.BookingIds.Contains(b.Id) && b.UserId == request.Username && b.Seat.Status == SeatStatus.Locked)
             .ToListAsync(ct);
 
-        if (user == null || bookings.Count != request.BookingIds.Count) return false;
+        if (user == null || bookings.Count != request.BookingIds.Count)
+            return false;
 
         decimal totalBasePrice = bookings.Sum(b => b.Seat.Price);
         decimal originalTotalEgp = totalBasePrice;
@@ -125,7 +129,10 @@ public class PayWithWalletHandler : IRequestHandler<PayWithWalletCommand, bool>
             }
         }
 
-        if (!user.DeductFunds(totalBasePrice)) return false;
+        if (!user.DeductFunds(totalBasePrice))
+            return false;
+
+        decimal feePercentage = 0.10m; // 10% platform fee
 
         foreach (var booking in bookings)
         {
@@ -133,6 +140,11 @@ public class PayWithWalletHandler : IRequestHandler<PayWithWalletCommand, bool>
             {
                 booking.AmountPaid = Math.Round((booking.Seat.Price / originalTotalEgp) * totalBasePrice, 2);
             }
+
+            // Revenue Split Logic
+            booking.PlatformFee = Math.Round(booking.AmountPaid * feePercentage, 2);
+            booking.OrganizerEarnings = booking.AmountPaid - booking.PlatformFee;
+
             booking.Seat.Status = SeatStatus.Booked;
 
             if (!string.IsNullOrEmpty(booking.JobId))
@@ -141,7 +153,12 @@ public class PayWithWalletHandler : IRequestHandler<PayWithWalletCommand, bool>
             }
         }
 
-        _context.AuditLogs.Add(new AuditLog { Username = request.Username, Action = "Cart Purchase", Details = $"Bought {bookings.Count} seats with wallet." });
+        _context.AuditLogs.Add(new AuditLog
+        {
+            Username = request.Username,
+            Action = "Cart Purchase",
+            Details = $"Bought {bookings.Count} seats with wallet."
+        });
 
         try
         {

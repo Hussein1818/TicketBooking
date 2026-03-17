@@ -11,8 +11,12 @@ public class Booking
     public decimal AmountPaid { get; set; }
     public string Currency { get; set; } = "EGP";
     public decimal ExchangeRate { get; set; } = 1.0m;
-    public string? JobId { get; set; }
 
+    
+    public decimal PlatformFee { get; set; }
+    public decimal OrganizerEarnings { get; set; }
+
+    public string? JobId { get; set; }
     public int? OrderId { get; set; }
 
     public Seat Seat { get; set; } = null!;

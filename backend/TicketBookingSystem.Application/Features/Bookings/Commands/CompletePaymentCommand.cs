@@ -53,11 +53,16 @@ public class CompletePaymentCommandHandler : IRequestHandler<CompletePaymentComm
         if (order == null || order.Status == "Paid") return false;
 
         order.Status = "Paid";
+        decimal feePercentage = 0.10m; // 10% platform fee
 
         foreach (var booking in order.Bookings)
         {
             if (booking.Seat.Status == SeatStatus.Locked)
             {
+                // Revenue Split Logic
+                booking.PlatformFee = Math.Round(booking.AmountPaid * feePercentage, 2);
+                booking.OrganizerEarnings = booking.AmountPaid - booking.PlatformFee;
+
                 booking.Seat.Status = SeatStatus.Booked;
 
                 if (!string.IsNullOrEmpty(booking.JobId))
@@ -67,19 +72,10 @@ public class CompletePaymentCommandHandler : IRequestHandler<CompletePaymentComm
             }
         }
 
-        try
-        {
-            await _context.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            return true;
-        }
+        try { await _context.SaveChangesAsync(cancellationToken); }
+        catch (DbUpdateConcurrencyException) { return true; }
 
-        foreach (var booking in order.Bookings)
-        {
-            await _hubService.SendSeatBookedNotification(booking.SeatId);
-        }
+        foreach (var booking in order.Bookings) { await _hubService.SendSeatBookedNotification(booking.SeatId); }
         await _hubService.SendDashboardUpdate();
 
         var userEmail = await _context.Users

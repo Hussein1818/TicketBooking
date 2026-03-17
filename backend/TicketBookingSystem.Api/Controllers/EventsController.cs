@@ -20,7 +20,6 @@ public class EventsController : ControllerBase
         _mediator = mediator;
     }
 
-    // Both Admins and regular users can view the list of events and their details
     [HttpGet]
     public async Task<IActionResult> GetAllEvents([FromQuery] GetEventsQuery query)
     {
@@ -28,27 +27,30 @@ public class EventsController : ControllerBase
         return Ok(events);
     }
 
-    // Admins can create new events with details like name, date, venue, and ticket price
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Organizer")]
     [HttpPost]
     public async Task<IActionResult> CreateEvent([FromBody] ManageEventCommand command)
     {
         command.Id = 0;
+        command.CurrentUserId = User.Identity?.Name ?? string.Empty;
+        command.IsAdmin = User.IsInRole("Admin");
+
         var eventId = await _mediator.Send(command);
         return Ok(new { Message = "Event created successfully", EventId = eventId });
     }
 
-    // Admins can update event details, including closing the event for ticket sales
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Organizer")]
     [HttpPut("{eventId}")]
     public async Task<IActionResult> UpdateEvent(int eventId, [FromBody] ManageEventCommand command)
     {
         command.Id = eventId;
+        command.CurrentUserId = User.Identity?.Name ?? string.Empty;
+        command.IsAdmin = User.IsInRole("Admin");
+
         await _mediator.Send(command);
         return Ok(new { Message = "Event updated successfully." });
     }
 
-    // Admins can create seats for an event, specifying seat numbers and types (e.g., VIP, Regular)
     [Authorize(Roles = "Admin")]
     [HttpPost("{eventId}/seats")]
     public async Task<IActionResult> CreateSeats(int eventId, [FromBody] CreateSeatsCommand command)
@@ -58,7 +60,6 @@ public class EventsController : ControllerBase
         return Ok(new { Message = $"Successfully created {seatsCount} seats for Event {eventId}" });
     }
 
-    // Both Admins and regular users can view available seats for an event, including seat types and prices
     [HttpGet("{eventId}/seats")]
     public async Task<IActionResult> GetEventSeats(int eventId)
     {
