@@ -83,6 +83,12 @@ A comprehensive, real-time ticket booking system built with **.NET Core**. The p
 - **Gateway Synchronization:** Provides a single, unified checkout session for external payment gateways (e.g., Paymob), completely eliminating race conditions and ensuring atomic transactions for multi-item purchases.
 - **Proportional Financial Distribution:** Upon successful payment, the system accurately distributes the total paid amount—including any applied VIP discounts or promo codes—proportionally across all individual bookings within the cart.
 
+### 14.  Multi-Tenant Architecture & Revenue Splitting 
+- **Organizer Roles:** The system supports multiple event organizers, operating as a full SaaS platform. Organizers can exclusively manage their own events and view their specific sales metrics.
+- **Automated Revenue Splitting:** Every ticket purchase automatically and immutably calculates the platform commission (e.g., 10%) and the organizer's net earnings at the exact moment of transaction, protecting historical financial data from future fee changes.
+- **Zero-Trust Anti-IDOR Security:** Complete isolation of tenant data. Robust command validation ensures that an Organizer can only modify or access events explicitly owned by them, preventing Insecure Direct Object Reference (IDOR) vulnerabilities.
+- **Dual-Perspective Dashboard:** The analytics dashboard intelligently adapts to the user's role; Admins gain a bird's-eye view of total platform commissions and global stats, while Organizers are restricted to their personalized net earnings and specific event performance.
+
 ---
 
 ##  Project Structure
