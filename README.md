@@ -94,6 +94,11 @@ A comprehensive, real-time ticket booking system built with **.NET Core**. The p
 - **Anti-Spam Mechanisms:** Review-based points are strictly rate-limited (e.g., maximum of 3 rewarded reviews per month) and require a "Verified Purchase" to completely prevent abuse and spam.
 - **Automated Wallet Conversion:** Implemented a Rich Domain Model pattern where the `User` entity autonomously monitors point thresholds (e.g., 1000 points) and automatically converts them into real monetary value deposited directly into the user's virtual wallet.
 
+### 16.  Real-Time In-App Notifications (SignalR)
+- **Instant Alerts:** Integrated **SignalR** to push real-time, personalized notifications directly to the user's active session without requiring page reloads.
+- **Waitlist Synergy:** Seamlessly connected with the Waitlist background jobs to instantly alert users the precise millisecond a locked seat becomes available, significantly improving conversion rates over traditional email.
+- **Persistent & Secure:** Notifications are persistently stored in the database. Retrieval and state management (e.g., Mark as Read) are strictly governed by CQRS commands and Zero-Trust identity checks, ensuring absolute protection against IDOR vulnerabilities.
+
 ---
 
 ##  Project Structure
