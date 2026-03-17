@@ -1,11 +1,12 @@
 ﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
-using TicketBookingSystem.Application.Interfaces;
-using TicketBookingSystem.Domain.Enums;
 using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using TicketBookingSystem.Application.Interfaces;
+using TicketBookingSystem.Domain.Entities;
+using TicketBookingSystem.Domain.Enums;
 
 namespace TicketBookingSystem.Application.Features.Bookings.Commands;
 
@@ -53,6 +54,15 @@ public class CompletePaymentCommandHandler : IRequestHandler<CompletePaymentComm
         if (order == null || order.Status == "Paid") return false;
 
         order.Status = "Paid";
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.UserName == order.UserId, cancellationToken);
+        if (user != null)
+        {
+            int pointsToAward = (int)(order.TotalAmount / 10); // Give 1 point for every 10 EGP
+            user.AddLoyaltyPoints(pointsToAward);
+            _context.AuditLogs.Add(new AuditLog { Username = user.UserName!, Action = "Loyalty Points", Details = $"Earned {pointsToAward} points from Paymob purchase." });
+        }
+
         decimal feePercentage = 0.10m; // 10% platform fee
 
         foreach (var booking in order.Bookings)

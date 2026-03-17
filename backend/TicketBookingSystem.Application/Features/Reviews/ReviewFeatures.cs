@@ -55,6 +55,22 @@ public class AddReviewHandler : IRequestHandler<AddReviewCommand, bool>
         };
 
         _context.Reviews.Add(review);
+
+        
+        var startOfMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        var reviewsThisMonth = await _context.Reviews
+            .CountAsync(r => r.Username == authUser && r.CreatedAt >= startOfMonth, ct);
+
+        if (reviewsThisMonth < 3)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserName == authUser, ct);
+            if (user != null)
+            {
+                user.AddLoyaltyPoints(50); 
+                _context.AuditLogs.Add(new AuditLog { Username = authUser, Action = "Loyalty Points", Details = "Earned 50 points from reviewing." });
+            }
+        }
+
         await _context.SaveChangesAsync(ct);
         return true;
     }
