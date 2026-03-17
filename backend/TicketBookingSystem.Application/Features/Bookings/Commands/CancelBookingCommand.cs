@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using TicketBookingSystem.Application.Interfaces;
+using TicketBookingSystem.Domain.Entities;
 using TicketBookingSystem.Domain.Enums;
 using System;
 using System.Linq;
@@ -72,14 +73,24 @@ public class CancelBookingCommandHandler : IRequestHandler<CancelBookingCommand,
 
         if (waitlistUser != null)
         {
-            await _emailService.SendEmailAsync(
-                waitlistUser.Email,
-                "Ticket Available!",
-                $"A ticket just became available for {eventName} due to a cancellation. Hurry and book it now!"
-            );
+            string alertMessage = $"A ticket just became available for {eventName} due to a cancellation. Hurry and book it now!";
 
+            await _emailService.SendEmailAsync(waitlistUser.Email, "Ticket Available!", alertMessage);
+
+            var notification = new Notification
+            {
+                UserId = waitlistUser.UserId,
+                Message = alertMessage,
+                Type = "WaitlistAlert",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Notifications.Add(notification);
             _context.Waitlists.Remove(waitlistUser);
+
             await _context.SaveChangesAsync(cancellationToken);
+            await _hubService.SendUserNotification(waitlistUser.UserId, alertMessage, "WaitlistAlert");
         }
 
         return true;
