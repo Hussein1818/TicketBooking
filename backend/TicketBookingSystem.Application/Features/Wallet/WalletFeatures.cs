@@ -132,6 +132,12 @@ public class PayWithWalletHandler : IRequestHandler<PayWithWalletCommand, bool>
         if (!user.DeductFunds(totalBasePrice))
             return false;
 
+        // Give 1 loyalty point for every 10 EGP spent
+        int pointsToAward = (int)(totalBasePrice / 10);
+        user.AddLoyaltyPoints(pointsToAward);
+        _context.AuditLogs.Add(new AuditLog { Username = request.Username, Action = "Loyalty Points",
+            Details = $"Earned {pointsToAward} points from wallet purchase." });
+
         decimal feePercentage = 0.10m; // 10% platform fee
 
         foreach (var booking in bookings)
