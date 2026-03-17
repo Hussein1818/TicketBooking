@@ -89,6 +89,11 @@ A comprehensive, real-time ticket booking system built with **.NET Core**. The p
 - **Zero-Trust Anti-IDOR Security:** Complete isolation of tenant data. Robust command validation ensures that an Organizer can only modify or access events explicitly owned by them, preventing Insecure Direct Object Reference (IDOR) vulnerabilities.
 - **Dual-Perspective Dashboard:** The analytics dashboard intelligently adapts to the user's role; Admins gain a bird's-eye view of total platform commissions and global stats, while Organizers are restricted to their personalized net earnings and specific event performance.
 
+### 15.  Loyalty Points & Automated Rewards System
+- **Engagement Driven:** Users earn loyalty points automatically by purchasing tickets and submitting verified event reviews.
+- **Anti-Spam Mechanisms:** Review-based points are strictly rate-limited (e.g., maximum of 3 rewarded reviews per month) and require a "Verified Purchase" to completely prevent abuse and spam.
+- **Automated Wallet Conversion:** Implemented a Rich Domain Model pattern where the `User` entity autonomously monitors point thresholds (e.g., 1000 points) and automatically converts them into real monetary value deposited directly into the user's virtual wallet.
+
 ---
 
 ##  Project Structure
