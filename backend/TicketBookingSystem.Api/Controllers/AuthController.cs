@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TicketBookingSystem.Application.Features.Auth.Commands;
 using TicketBookingSystem.Application.Features.Auth.Queries;
+using System.Threading.Tasks;
 
 namespace TicketBookingSystem.Api.Controllers;
 
@@ -27,14 +28,30 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginQuery query)
     {
-        var token = await _mediator.Send(query);
-        return Ok(new { Token = token });
+        var authResponse = await _mediator.Send(query);
+        return Ok(authResponse);
     }
+
+    [HttpPost("refresh-token")]
+    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenCommand command)
+    {
+        var authResponse = await _mediator.Send(command);
+        return Ok(authResponse);
+    }
+
+    [Authorize]
+    [HttpPost("revoke-token")]
+    public async Task<IActionResult> RevokeToken()
+    {
+        var username = User.Identity?.Name ?? string.Empty;
+        await _mediator.Send(new RevokeTokenCommand { Username = username });
+        return Ok(new { Message = "Token revoked successfully." });
+    }
+
     [Authorize]
     [HttpPost("change-password")]
     public async Task<IActionResult> ChangePassword([FromBody] TicketBookingSystem.Application.Features.Auth.Commands.ChangePasswordCommand command)
     {
-        
         var success = await _mediator.Send(command);
 
         if (!success)

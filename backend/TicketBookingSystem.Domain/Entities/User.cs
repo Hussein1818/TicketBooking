@@ -17,8 +17,11 @@ public class User : IdentityUser
     public SubscriptionTier Tier { get; private set; } = SubscriptionTier.None;
     public DateTime? TierExpiryDate { get; private set; }
 
-    
     public int LoyaltyPoints { get; private set; } = 0;
+
+    // Refresh Token Fields
+    public string? RefreshToken { get; set; }
+    public DateTime? RefreshTokenExpiryTime { get; set; }
 
     public void AddFunds(decimal amount)
     {
@@ -44,7 +47,6 @@ public class User : IdentityUser
 
         LoyaltyPoints += points;
 
-        
         int conversionThreshold = 1000;
         decimal rewardAmount = 100m;
 

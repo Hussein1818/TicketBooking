@@ -8,13 +8,19 @@ using System.Threading.Tasks;
 
 namespace TicketBookingSystem.Application.Features.Auth.Queries;
 
-public class LoginQuery : IRequest<string>
+public class AuthResponseDto
+{
+    public string Token { get; set; } = string.Empty;
+    public string RefreshToken { get; set; } = string.Empty;
+}
+
+public class LoginQuery : IRequest<AuthResponseDto>
 {
     public string Username { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
 }
 
-public class LoginQueryHandler : IRequestHandler<LoginQuery, string>
+public class LoginQueryHandler : IRequestHandler<LoginQuery, AuthResponseDto>
 {
     private readonly UserManager<User> _userManager;
     private readonly ITokenService _tokenService;
@@ -25,16 +31,24 @@ public class LoginQueryHandler : IRequestHandler<LoginQuery, string>
         _tokenService = tokenService;
     }
 
-    public async Task<string> Handle(LoginQuery request, CancellationToken cancellationToken)
+    public async Task<AuthResponseDto> Handle(LoginQuery request, CancellationToken cancellationToken)
     {
         var user = await _userManager.FindByNameAsync(request.Username);
-        if (user == null)
+        if (user == null || !await _userManager.CheckPasswordAsync(user, request.Password))
             throw new UnauthorizedAccessException("Invalid credentials.");
 
-        var isPasswordValid = await _userManager.CheckPasswordAsync(user, request.Password);
-        if (!isPasswordValid)
-            throw new UnauthorizedAccessException("Invalid credentials.");
+        var token = _tokenService.GenerateToken(user);
+        var refreshToken = _tokenService.GenerateRefreshToken();
 
-        return _tokenService.GenerateToken(user);
+        user.RefreshToken = refreshToken;
+        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7); 
+
+        await _userManager.UpdateAsync(user);
+
+        return new AuthResponseDto
+        {
+            Token = token,
+            RefreshToken = refreshToken
+        };
     }
 }
