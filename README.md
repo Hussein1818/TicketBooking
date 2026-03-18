@@ -104,6 +104,11 @@ A comprehensive, real-time ticket booking system built with **.NET Core**. The p
 - **Zero-Trust Security:** Access tokens have a strictly short lifespan (15 minutes) for maximum security, while long-lived, cryptographically secure refresh tokens (7 days) are persisted and validated against the database.
 - **Session Revocation:** Provided dedicated endpoints to safely revoke refresh tokens upon explicit user logout or suspected account compromise, completely neutralizing hijacked sessions.
 
+### 18.  Complete Identity & Security Workflow
+- **Email Verification:** Mandates email confirmation prior to accessing the system, preventing fake accounts and spam bookings. Includes a secure resend-confirmation flow.
+- **Password Recovery:** Implemented a secure Forgot/Reset Password lifecycle utilizing time-limited, cryptographically generated tokens sent via email.
+- **Anti-Enumeration Protection:** Engineered the authentication endpoints (e.g., forgot-password, resend-confirmation) to universally return success responses regardless of email existence. This completely neutralizes "Email Enumeration" attacks, preventing malicious actors from harvesting registered user data.
+
 ---
 
 ##  Project Structure
