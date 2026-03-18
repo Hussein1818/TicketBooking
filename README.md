@@ -99,6 +99,11 @@ A comprehensive, real-time ticket booking system built with **.NET Core**. The p
 - **Waitlist Synergy:** Seamlessly connected with the Waitlist background jobs to instantly alert users the precise millisecond a locked seat becomes available, significantly improving conversion rates over traditional email.
 - **Persistent & Secure:** Notifications are persistently stored in the database. Retrieval and state management (e.g., Mark as Read) are strictly governed by CQRS commands and Zero-Trust identity checks, ensuring absolute protection against IDOR vulnerabilities.
 
+### 17.  Advanced Authentication & Refresh Token Flow
+- **Seamless Sessions:** Implemented a secure Refresh Token architecture to automatically issue new JWT access tokens without interrupting the user experience or requiring re-authentication.
+- **Zero-Trust Security:** Access tokens have a strictly short lifespan (15 minutes) for maximum security, while long-lived, cryptographically secure refresh tokens (7 days) are persisted and validated against the database.
+- **Session Revocation:** Provided dedicated endpoints to safely revoke refresh tokens upon explicit user logout or suspected account compromise, completely neutralizing hijacked sessions.
+
 ---
 
 ##  Project Structure
