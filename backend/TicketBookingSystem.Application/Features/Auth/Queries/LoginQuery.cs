@@ -1,10 +1,10 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Identity;
-using TicketBookingSystem.Application.Interfaces;
-using TicketBookingSystem.Domain.Entities;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using TicketBookingSystem.Application.Interfaces;
+using TicketBookingSystem.Domain.Entities;
 
 namespace TicketBookingSystem.Application.Features.Auth.Queries;
 
@@ -34,14 +34,19 @@ public class LoginQueryHandler : IRequestHandler<LoginQuery, AuthResponseDto>
     public async Task<AuthResponseDto> Handle(LoginQuery request, CancellationToken cancellationToken)
     {
         var user = await _userManager.FindByNameAsync(request.Username);
+
         if (user == null || !await _userManager.CheckPasswordAsync(user, request.Password))
             throw new UnauthorizedAccessException("Invalid credentials.");
+
+        
+        if (!await _userManager.IsEmailConfirmedAsync(user))
+            throw new UnauthorizedAccessException("Please confirm your email before logging in.");
 
         var token = _tokenService.GenerateToken(user);
         var refreshToken = _tokenService.GenerateRefreshToken();
 
         user.RefreshToken = refreshToken;
-        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7); 
+        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
 
         await _userManager.UpdateAsync(user);
 
