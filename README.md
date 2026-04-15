@@ -1,119 +1,58 @@
-#  Real-Time Ticket Booking System
+# 🎫 Real-Time Ticket Booking System
 
 ## 📌 Overview
-A comprehensive, real-time ticket booking system built with **.NET Core**. The project strictly follows **Clean Architecture** principles and implements the **CQRS** (Command Query Responsibility Segregation) pattern to ensure scalability, maintainability, and clear separation of concerns.
-
-## 🛠️ Architecture & Technologies
-- **Backend:** .NET (C#)
-- **Architecture:** Clean Architecture (Rich Domain Models, Application, Infrastructure, API).
-- **Design Pattern:** CQRS using **MediatR** & **FluentValidation**.
-- **Real-Time Communication:** **SignalR** (Secured with JWT for live seat locking and booking updates).
-- **Background Jobs:** **Hangfire** (for releasing unpaid locked seats after a 5-minute timeout).
-- **Database:** Entity Framework Core (SQL Server) with EF Core Migrations.
-- **Authentication & Security:** ASP.NET Core Identity, JWT, **Anti-IDOR protection**, and **HMAC-SHA256 Digital Signatures**.
-- **Caching:** **Distributed Cache (Redis)** for high-performance event listing and instant cache invalidation upon bookings.
-- **PDF Generation:** **QuestPDF** & **QRCoder** for professional ticket and Fan ID issuing.
-- **Payment Integration:** **Paymob** (with Idempotency and Optimistic Concurrency protection).
+A comprehensive, high-performance real-time ticket booking system built with **.NET Core**. The project strictly adheres to **Clean Architecture** principles and implements the **CQRS** (Command Query Responsibility Segregation) pattern to ensure massive scalability, maintainability, and enterprise-grade security.
 
 ---
 
-##  Key Features (Business Logic)
+##  Architecture & Technologies
+- **Backend:** .NET 9 (C#)
+- **Architecture:** Clean Architecture (Domain-Driven Design with Rich Models).
+- **Design Pattern:** CQRS using **MediatR** & FluentValidation.
+- **Real-Time:** **SignalR** (Secured with JWT for live seat locking and notifications).
+- **Background Jobs:** **Hangfire** (Automated release of expired locks and waitlist processing).
+- **Database:** SQL Server with Entity Framework Core (Optimistic Concurrency).
+- **Caching:** **Distributed Redis Cache** (High-speed event discovery & instant invalidation).
+- **Security:** ASP.NET Core Identity, JWT (Access + Refresh Tokens), HMAC-SHA256 Digital Signatures, and Anti-IDOR protection.
+- **Integrations:** **Paymob** Payment Gateway, QuestPDF, and QRCoder.
 
-### 1.  Real-Time Seat Booking & Caching
-- Users can view live seat statuses (Available, Locked, Booked) fetched instantly from **Redis Cache**.
-- When a user selects a seat, it becomes **Locked** for 5 minutes.
-- SignalR broadcasts the lock to all connected clients immediately to prevent double-selection.
-- Redis cache is automatically invalidated and refreshed to guarantee data consistency.
+---
 
-### 2.  Strict Concurrency & Race Condition Protection
-- **Seat Concurrency:** Uses EF Core `RowVersion` to ensure no two users can book the same seat at the exact same millisecond.
-- **Wallet Double-Spend Protection:** The `User` wallet is heavily protected using a Concurrency Token (`Version`), preventing balance deduction errors during rapid duplicate requests.
-- **Payment Idempotency:** Custom logic to handle duplicate notifications from payment gateways (Paymob), ensuring transactions are processed only once.
+##  Key Features
 
-### 3.  Professional PDF Tickets & Fan ID
-- **Official Tickets:** Successful payments trigger the automatic generation of a professional PDF Ticket using QuestPDF, which is instantly emailed to the user.
-- **Fan ID Generation:** Users can complete their profiles (National ID, Photo Uploads) to dynamically generate and download a personalized **Fan ID PDF** with an embedded QR code.
-- *Note:* File uploading is strictly decoupled from the Application layer to maintain Clean Architecture compliance (using Streams instead of `IFormFile`).
+### 1.  Enterprise-Grade Security & Authentication
+* **Zero-Trust Architecture:** Complete prevention of **IDOR** (Insecure Direct Object Reference) by extracting identities exclusively from secure JWT claims.
+* **Advanced Session Management:** Secure JWT flow with short-lived access tokens (15 mins) and long-lived, database-persisted **Refresh Tokens** with explicit revocation.
+* **Strict Identity Flow:** Enforced email verification, secure Forgot/Reset password lifecycles, and engineered endpoints that neutralize **Email Enumeration** attacks.
+* **Cryptographic Anti-Forgery:** Dynamic QR codes for tickets are digitally signed using **HMAC-SHA256**, making forgery mathematically impossible.
 
-### 4.  Secure QR Code System & Anti-Forgery
-- Each ticket contains a dynamically generated QR Code.
-- The system uses **HMAC SHA-256 cryptographic hashing** to sign ticket data (`TICKET|SeatId|Username`).
-- The generated signature is embedded inside the QR code, making ticket forgery or manual tampering mathematically impossible.
-- Gate scanners can instantly validate the signature and the owner's identity.
+### 2.  Real-Time Operations & High Concurrency
+* **SignalR & Redis Synergy:** Live seat statuses are fetched instantly from Redis and broadcasted via SignalR, locking seats instantly upon selection to prevent double-booking.
+* **Race Condition Protection:** Utilizes EF Core `RowVersion` for optimistic concurrency, protecting seat booking and wallet balance transactions at the millisecond level.
+* **Instant Notifications:** Personalized real-time alerts pushed via SignalR for waitlist updates and system events.
 
-### 5.  Smart Waitlist System
-- If an event is sold out, users can join a digital waitlist.
-- When new seats are added or existing bookings are cancelled, the system handles the queue intelligently.
-- It fetches the **exact number of users** matching the available seats (First-In-First-Out) and triggers an Email Notification to them, without flushing the entire queue.
+### 3.  SaaS Financials & Multi-Tenant Wallet
+* **Multi-Tenant Revenue Splitting:** Organizers manage their own events with isolated dashboards. The platform automatically calculates and immutably splits commissions at the time of transaction.
+* **Unified Shopping Cart:** Aggregates multiple seats into a single `Order` for unified checkout, eliminating gateway race conditions.
+* **Virtual Wallet & Multi-Currency:** Internal wallet system supporting abstracted exchange rates (EGP, USD, SAR) with immutable historical transaction logs.
 
-### 6.  Wallet & Payment System (with Hangfire Optimization)
-- Integrated with **Paymob** for credit card and mobile wallet payments.
-- Internal **Virtual Wallet** system allowing users to keep funds and pay for tickets seamlessly.
-- **Resource Optimization:** If a user pays successfully within the 5-minute lock window, the scheduled Hangfire release job is dynamically tracked and **cancelled** to save server CPU and memory resources.
+### 4.  Automation & Smart Systems
+* **Hangfire Optimization:** Unpaid seats are released after 5 minutes. Background jobs are dynamically cancelled upon successful payment to save server resources.
+* **Intelligent Waitlist:** FIFO-based queue that fetches the exact number of users matching newly available seats and triggers instant SignalR/Email alerts.
+* **VIP Memberships:** Automated subscription tiers (Silver, Gold, VIP) with dynamic discount calculation during the checkout process.
 
-### 7.  Ticket Transfer & Security (IDOR Prevention)
-- Users can securely transfer their purchased tickets to other registered users.
-- **Zero-Trust API:** All sensitive endpoints (Transfer, Cancel, Wallet Pay) extract the identity directly from the secure JWT claims. Route and body parameters for Usernames/IDs are ignored to completely eliminate **IDOR (Insecure Direct Object Reference)** vulnerabilities.
-
-### 8.  Verified Reviews
-- A "Verified Purchase" review system where users can only rate an event **if they actually attended it** (booking confirmed and event date passed).
-
-### 9.  Admin Dashboard & System Logs
-- Advanced, fail-safe analytics for admins: Total Revenue (handles empty states dynamically), Seat Fill Rate, Top Selling Events, and exact Customer tracking.
-- Complete Audit Trail logging for critical actions like wallet transactions and ticket transfers.
-
-### 10.  Role-Based Access Control (RBAC) & Gate Scanning
-- Implemented strict RBAC with distinct roles: **Customer, Staff, and Admin**.
-- Dedicated **Staff** role created exclusively for gate security personnel, provisioned solely by Admins to prevent unauthorized registrations.
-- Staff members have restricted access to the ticket validation scanner endpoints, ensuring they cannot access dashboards, financial data, or administrative operations.
-
-### 11.  VIP Memberships & Automated Discounts
-- Users can upgrade their accounts to premium subscription tiers (**Silver, Gold, VIP**) using their virtual wallet funds.
-- The system dynamically calculates and applies automated discounts (e.g., 10%, 20%, 30%) during the checkout process based on the user's active tier and its expiration date.
-- Centralized pricing logic ensures discounts are consistently enforced across all payment methods, including the internal Wallet and external gateways like Paymob.
-
-### 12.  Multi-Currency Support & Dynamic Exchange Rates
-- The system supports seamless international transactions by accepting multiple currencies (e.g., EGP, USD, SAR) during the checkout process.
-- Exchange rates are dynamically converted via an abstracted `ICurrencyConverterService` and immutably stored within each booking record to preserve historical financial accuracy.
-- **Fail-Safe Analytics:** The Admin Dashboard aggregates revenue intelligently by mathematically unifying all disparate currencies back to the base currency (EGP) using the exact exchange rate captured at the time of transaction, absolutely preventing multi-currency aggregation bugs.
-
-### 13.  Shopping Cart & Unified Checkout
-- **Cart Aggregation:** Users can lock multiple seats across different events and seamlessly add them to a unified shopping cart.
-- **Order Entity Pattern:** The system intelligently aggregates multiple independent `Booking` entities under a single parent `Order` entity to streamline the checkout process.
-- **Gateway Synchronization:** Provides a single, unified checkout session for external payment gateways (e.g., Paymob), completely eliminating race conditions and ensuring atomic transactions for multi-item purchases.
-- **Proportional Financial Distribution:** Upon successful payment, the system accurately distributes the total paid amount—including any applied VIP discounts or promo codes—proportionally across all individual bookings within the cart.
-
-### 14.  Multi-Tenant Architecture & Revenue Splitting 
-- **Organizer Roles:** The system supports multiple event organizers, operating as a full SaaS platform. Organizers can exclusively manage their own events and view their specific sales metrics.
-- **Automated Revenue Splitting:** Every ticket purchase automatically and immutably calculates the platform commission (e.g., 10%) and the organizer's net earnings at the exact moment of transaction, protecting historical financial data from future fee changes.
-- **Zero-Trust Anti-IDOR Security:** Complete isolation of tenant data. Robust command validation ensures that an Organizer can only modify or access events explicitly owned by them, preventing Insecure Direct Object Reference (IDOR) vulnerabilities.
-- **Dual-Perspective Dashboard:** The analytics dashboard intelligently adapts to the user's role; Admins gain a bird's-eye view of total platform commissions and global stats, while Organizers are restricted to their personalized net earnings and specific event performance.
-
-### 15.  Loyalty Points & Automated Rewards System
-- **Engagement Driven:** Users earn loyalty points automatically by purchasing tickets and submitting verified event reviews.
-- **Anti-Spam Mechanisms:** Review-based points are strictly rate-limited (e.g., maximum of 3 rewarded reviews per month) and require a "Verified Purchase" to completely prevent abuse and spam.
-- **Automated Wallet Conversion:** Implemented a Rich Domain Model pattern where the `User` entity autonomously monitors point thresholds (e.g., 1000 points) and automatically converts them into real monetary value deposited directly into the user's virtual wallet.
-
-### 16.  Real-Time In-App Notifications (SignalR)
-- **Instant Alerts:** Integrated **SignalR** to push real-time, personalized notifications directly to the user's active session without requiring page reloads.
-- **Waitlist Synergy:** Seamlessly connected with the Waitlist background jobs to instantly alert users the precise millisecond a locked seat becomes available, significantly improving conversion rates over traditional email.
-- **Persistent & Secure:** Notifications are persistently stored in the database. Retrieval and state management (e.g., Mark as Read) are strictly governed by CQRS commands and Zero-Trust identity checks, ensuring absolute protection against IDOR vulnerabilities.
-
-### 17.  Advanced Authentication & Refresh Token Flow
-- **Seamless Sessions:** Implemented a secure Refresh Token architecture to automatically issue new JWT access tokens without interrupting the user experience or requiring re-authentication.
-- **Zero-Trust Security:** Access tokens have a strictly short lifespan (15 minutes) for maximum security, while long-lived, cryptographically secure refresh tokens (7 days) are persisted and validated against the database.
-- **Session Revocation:** Provided dedicated endpoints to safely revoke refresh tokens upon explicit user logout or suspected account compromise, completely neutralizing hijacked sessions.
-
-### 18.  Complete Identity & Security Workflow
-- **Email Verification:** Mandates email confirmation prior to accessing the system, preventing fake accounts and spam bookings. Includes a secure resend-confirmation flow.
-- **Password Recovery:** Implemented a secure Forgot/Reset Password lifecycle utilizing time-limited, cryptographically generated tokens sent via email.
-- **Anti-Enumeration Protection:** Engineered the authentication endpoints (e.g., forgot-password, resend-confirmation) to universally return success responses regardless of email existence. This completely neutralizes "Email Enumeration" attacks, preventing malicious actors from harvesting registered user data.
+### 5.  User Engagement & Operations
+* **Loyalty Points:** Users earn points through purchases and verified reviews (Anti-Spam limited), which autonomously convert to wallet funds.
+* **Verified Reviews:** A "Verified Purchase" system ensuring ratings are only possible for attended events.
+* **Professional Documents:** Automated generation of PDF Tickets and personalized Fan IDs with QR codes.
 
 ---
 
 ##  Project Structure
+* **Domain:** Core entities, Rich Domain Models, Enums, and Logic.
+* **Application:** CQRS Commands/Queries, DTOs, Mapping, and Interfaces.
+* **Infrastructure:** EF Core Persistence, SignalR Hubs, Redis, Hangfire, and Third-party Integrations (Paymob/PDF).
+* **Api:** Thin Controllers, JWT Middleware, and Global Exception Handling.
 
-- **`TicketBookingSystem.Domain`**: Core entities with **Rich Domain Models** (encapsulated collections and private setters), Enums, and AppConstants. Zero external dependencies.
-- **`TicketBookingSystem.Application`**: Business rules, CQRS Commands/Queries, DTOs, Validation behaviors, and abstract Interfaces (`ITicketPdfService`, `IEmailService`, `IApplicationDbContext`).
-- **`TicketBookingSystem.Infrastructure`**: Implementation details, Redis Cache configurations, SQL Server (EF Core), Identity, SignalR Hubs, Hangfire Jobs, Paymob integration, and QuestPDF generation.
-- **`TicketBookingSystem.Api`**: Thin Controllers (relying purely on MediatR), JWT Configuration, Global Exception Handling middleware, and Rate Limiting policies.
+---
+
