@@ -1,0 +1,36 @@
+name: Auto Deploy to MonsterASP
+
+on:
+  push:
+    branches: [ main ] # السكريبت هيشتغل لما ترفع على برانش main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup .NET 9
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore TicketBookingSystem.Api/TicketBookingSystem.Api.csproj
+
+    - name: Build and Publish
+      # السكريبت هيدخل يبني المشروع ويطلع الملفات في فولدر اسمه output
+      run: dotnet publish TicketBookingSystem.Api/TicketBookingSystem.Api.csproj -c Release -o ./output
+
+    - name: Deploy to MonsterASP via FTP
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        server: site64196.siteasp.net # سيرفر الـ FTP بتاعك
+        username: site64196 # اليوزر نيم بتاعك
+        password: ${{ secrets.MONSTER_FTP_PASSWORD }} # هيجيب الباسورد من الـ Secrets اللي عملناها
+        local-dir: ./output/ # الفولدر اللي فيه ملفات الـ Publish
+        server-dir: /wwwroot/ # المسار على سيرفر مونستر
+        protocol: ftp
+        port: 21 # بورت الـ FTP
