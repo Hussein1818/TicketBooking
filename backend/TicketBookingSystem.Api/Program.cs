@@ -137,12 +137,7 @@ builder.Services.AddValidatorsFromAssembly(typeof(TicketBookingSystem.Applicatio
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
-builder.Services.AddStackExchangeRedisCache(options =>
-{
-    
-    options.Configuration = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
-    options.InstanceName = "TicketBooking_";
-});
+builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSignalR();
 builder.Services.AddScoped<ITicketHubService, TicketHubService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
@@ -168,17 +163,20 @@ builder.Services.AddOpenApiDocument(config =>
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<TicketBookingSystem.Infrastructure.Persistence.ApplicationDbContext>();
+    dbContext.Database.Migrate();
+}
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseRateLimiter();
 app.UseExceptionHandler();
 app.UseCors("AllowSpecificOrigins");
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseOpenApi();
-    app.UseSwaggerUi();
-}
+
+app.UseOpenApi();
+app.UseSwaggerUi();
 
 app.UseHttpsRedirection();
 app.UseAuthentication();
