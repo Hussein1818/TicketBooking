@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using System;
 using TicketBookingSystem.Domain.Enums;
 
@@ -55,5 +55,15 @@ public class User : IdentityUser
             LoyaltyPoints -= conversionThreshold;
             AddFunds(rewardAmount);
         }
+    }
+
+    /// <summary>
+    /// Deducts loyalty points (e.g., when a booking is cancelled and points must be reverted).
+    /// Points cannot go below zero.
+    /// </summary>
+    public void DeductLoyaltyPoints(int points)
+    {
+        if (points <= 0) return;
+        LoyaltyPoints = Math.Max(0, LoyaltyPoints - points);
     }
 }

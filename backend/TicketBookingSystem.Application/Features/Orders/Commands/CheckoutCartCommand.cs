@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using TicketBookingSystem.Application.Interfaces;
 using TicketBookingSystem.Domain.Entities;
@@ -24,15 +24,18 @@ public class CheckoutCartCommandHandler : IRequestHandler<CheckoutCartCommand, s
     private readonly IApplicationDbContext _context;
     private readonly IPaymentService _paymentService;
     private readonly ICurrencyConverterService _currencyConverter;
+    private readonly IPricingService _pricingService;
 
     public CheckoutCartCommandHandler(
         IApplicationDbContext context,
         IPaymentService paymentService,
-        ICurrencyConverterService currencyConverter)
+        ICurrencyConverterService currencyConverter,
+        IPricingService pricingService)
     {
         _context = context;
         _paymentService = paymentService;
         _currencyConverter = currencyConverter;
+        _pricingService = pricingService;
     }
 
     public async Task<string> Handle(CheckoutCartCommand request, CancellationToken cancellationToken)
@@ -52,35 +55,16 @@ public class CheckoutCartCommandHandler : IRequestHandler<CheckoutCartCommand, s
         if (user == null) return string.Empty;
 
         decimal totalBasePriceEgp = bookings.Sum(b => b.Seat.Price);
-        decimal originalTotalEgp = totalBasePriceEgp;
 
-        if (user.Tier != SubscriptionTier.None && user.TierExpiryDate.HasValue && user.TierExpiryDate.Value > DateTime.UtcNow)
-        {
-            decimal discount = user.Tier switch
-            {
-                SubscriptionTier.Silver => 0.10m,
-                SubscriptionTier.Gold => 0.20m,
-                SubscriptionTier.VIP => 0.30m,
-                _ => 0m
-            };
-            totalBasePriceEgp -= totalBasePriceEgp * discount;
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.PromoCode))
-        {
-            var promo = await _context.PromoCodes.FirstOrDefaultAsync(p => p.Code == request.PromoCode && p.IsActive, cancellationToken);
-            if (promo != null && promo.CurrentUsage < promo.MaxUsage)
-            {
-                totalBasePriceEgp -= totalBasePriceEgp * (promo.DiscountPercentage / 100);
-                promo.CurrentUsage += 1;
-            }
-        }
+        // Use centralized pricing service for discount calculation
+        var pricing = await _pricingService.CalculateDiscountedPriceAsync(
+            totalBasePriceEgp, user, request.PromoCode, cancellationToken);
 
         string currency = string.IsNullOrWhiteSpace(request.TargetCurrency) ? "EGP" : request.TargetCurrency.ToUpper();
         decimal toTargetRate = await _currencyConverter.GetExchangeRateAsync("EGP", currency);
         decimal toEgpRate = await _currencyConverter.GetExchangeRateAsync(currency, "EGP");
 
-        decimal finalTotalInTargetCurrency = Math.Round(totalBasePriceEgp * toTargetRate, 2);
+        decimal finalTotalInTargetCurrency = Math.Round(pricing.FinalPriceEgp * toTargetRate, 2);
 
         var order = new Order
         {
@@ -96,9 +80,9 @@ public class CheckoutCartCommandHandler : IRequestHandler<CheckoutCartCommand, s
 
         foreach (var booking in bookings)
         {
-            if (originalTotalEgp > 0)
+            if (pricing.OriginalPriceEgp > 0)
             {
-                booking.AmountPaid = Math.Round((booking.Seat.Price / originalTotalEgp) * finalTotalInTargetCurrency, 2);
+                booking.AmountPaid = Math.Round((booking.Seat.Price / pricing.OriginalPriceEgp) * finalTotalInTargetCurrency, 2);
             }
             booking.Currency = currency;
             booking.ExchangeRate = toEgpRate;
@@ -111,4 +95,4 @@ public class CheckoutCartCommandHandler : IRequestHandler<CheckoutCartCommand, s
 
         return paymentUrl;
     }
-}
+}

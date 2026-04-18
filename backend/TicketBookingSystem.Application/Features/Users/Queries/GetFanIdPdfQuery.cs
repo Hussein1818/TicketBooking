@@ -1,8 +1,9 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using TicketBookingSystem.Application.Exceptions;
 using TicketBookingSystem.Application.Interfaces;
 
 namespace TicketBookingSystem.Application.Features.Users.Queries;
@@ -26,12 +27,12 @@ public class GetFanIdPdfQueryHandler : IRequestHandler<GetFanIdPdfQuery, byte[]>
     public async Task<byte[]> Handle(GetFanIdPdfQuery request, CancellationToken cancellationToken)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
-        if (user == null) throw new Exception("User not found");
+        if (user == null) throw new NotFoundException(nameof(Domain.Entities.User), request.UserId);
 
        
         if (string.IsNullOrEmpty(user.FanIdNumber) || string.IsNullOrEmpty(user.NationalId))
         {
-            throw new Exception("Please update your profile with National ID and Full Name first to generate a Fan ID.");
+            throw new BadRequestException("Please update your profile with National ID and Full Name first to generate a Fan ID.");
         }
 
        

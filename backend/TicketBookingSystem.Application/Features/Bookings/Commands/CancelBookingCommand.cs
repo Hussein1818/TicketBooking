@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using TicketBookingSystem.Application.Interfaces;
@@ -53,13 +53,51 @@ public class CancelBookingCommandHandler : IRequestHandler<CancelBookingCommand,
         var eventName = booking.Seat.Event.Name;
 
         var userToRefund = await _context.Users.FirstOrDefaultAsync(u => u.UserName == request.UserId, cancellationToken);
+
+        decimal refundAmount = 0;
         if (userToRefund != null)
         {
-            userToRefund.AddFunds(booking.AmountPaid);
+            var eventEntity = booking.Seat.Event;
+            var timeUntilEvent = eventEntity.EventDate - DateTime.UtcNow;
+
+            if (timeUntilEvent.TotalDays >= eventEntity.FullRefundDays)
+            {
+                refundAmount = booking.AmountPaid;
+            }
+            else if (timeUntilEvent.TotalDays >= eventEntity.PartialRefundDays)
+            {
+                refundAmount = booking.AmountPaid * (eventEntity.PartialRefundPercentage / 100m);
+            }
+
+            if (refundAmount > 0)
+            {
+                userToRefund.AddFunds(refundAmount);
+            }
+
+            // EDGE-06: Revert loyalty points earned from this booking to prevent gaming
+            int pointsToRevert = (int)(refundAmount / 10);
+            if (pointsToRevert > 0)
+            {
+                userToRefund.DeductLoyaltyPoints(pointsToRevert);
+                _context.AuditLogs.Add(new AuditLog
+                {
+                    Username = request.UserId,
+                    Action = "Loyalty Points Reverted",
+                    Details = $"Reverted {pointsToRevert} points due to booking cancellation (Booking #{request.BookingId})."
+                });
+            }
         }
 
         _context.Bookings.Remove(booking);
-        await _context.SaveChangesAsync(cancellationToken);
+        
+        try 
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return false;
+        }
 
         await _cache.RemoveAsync($"Seats_Event_{eventId}", cancellationToken);
 

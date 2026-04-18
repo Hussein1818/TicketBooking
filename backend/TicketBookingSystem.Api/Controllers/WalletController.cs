@@ -67,4 +67,25 @@ public class WalletController : ControllerBase
 
         return Ok(new { Message = "Payment successful via Wallet! 🎉" });
     }
+
+    [HttpPost("transfer")]
+    public async Task<IActionResult> TransferFunds([FromBody] TransferFundsCommand command)
+    {
+        
+        var currentUsername = User.Identity?.Name;
+        if (string.IsNullOrEmpty(currentUsername))
+            return Unauthorized();
+
+        command.FromUsername = currentUsername;
+
+        var success = await _mediator.Send(command);
+
+        if (!success)
+            return BadRequest(new { Message = "Transfer failed. Please verify the target username." });
+
+        return Ok(new
+        {
+            Message = $"Successfully transferred {command.Amount} to @{command.ToUsername}! 💸"
+        });
+    }
 }

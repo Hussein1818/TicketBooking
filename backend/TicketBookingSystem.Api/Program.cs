@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 using Hangfire;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -19,14 +19,28 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
+var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("AllowSpecificOrigins", policy =>
     {
-        policy.SetIsOriginAllowed(origin => true)
-              .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials();
+        if (builder.Environment.IsDevelopment() && allowedOrigins.Length == 0)
+        {
+            // Development fallback: allow localhost origins
+            policy.SetIsOriginAllowed(origin =>
+                    new Uri(origin).Host == "localhost")
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .AllowCredentials();
+        }
+        else
+        {
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .AllowCredentials();
+        }
     });
 });
 
@@ -90,6 +104,7 @@ builder.Services.AddScoped<IFileService, FileService>();
 builder.Services.AddScoped<IFanIdPdfService, FanIdPdfService>();
 builder.Services.AddScoped<IPaymentService, PaymobPaymentService>();
 builder.Services.AddScoped<ICurrencyConverterService, CurrencyConverterService>();
+builder.Services.AddScoped<IPricingService, TicketBookingSystem.Application.Services.PricingService>();
 builder.Services.AddAuthorization();
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -97,11 +112,16 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 builder.Services.AddIdentityCore<TicketBookingSystem.Domain.Entities.User>(options =>
 {
-    options.Password.RequireDigit = false;
-    options.Password.RequiredLength = 6;
+    options.Password.RequireDigit = true;
+    options.Password.RequiredLength = 8;
     options.Password.RequireNonAlphanumeric = false;
-    options.Password.RequireUppercase = false;
-    options.Password.RequireLowercase = false;
+    options.Password.RequireUppercase = true;
+    options.Password.RequireLowercase = true;
+
+    // Account lockout on repeated failed login attempts
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.AllowedForNewUsers = true;
 })
 .AddEntityFrameworkStores<ApplicationDbContext>();
 
@@ -152,7 +172,7 @@ app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseRateLimiter();
 app.UseExceptionHandler();
-app.UseCors("AllowAll");
+app.UseCors("AllowSpecificOrigins");
 
 if (app.Environment.IsDevelopment())
 {
@@ -163,7 +183,10 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseHangfireDashboard("/hangfire");
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = new[] { new TicketBookingSystem.Api.Middlewares.HangfireAdminAuthorizationFilter() }
+});
 app.MapControllers();
 app.MapHub<TicketHub>("/ticketHub");
 

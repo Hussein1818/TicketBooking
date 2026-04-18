@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TicketBookingSystem.Application.Features.Admin;
@@ -34,15 +34,16 @@ public class AdminController : ControllerBase
 
     [Authorize(Roles = "Admin")]
     [HttpGet("logs")]
-    public async Task<IActionResult> GetSystemLogs()
+    public async Task<IActionResult> GetSystemLogs([FromQuery] int page = 1, [FromQuery] int pageSize = 50)
     {
-        var logs = await _mediator.Send(new GetSystemLogsQuery());
+        var logs = await _mediator.Send(new GetSystemLogsQuery { Page = page, PageSize = pageSize });
         return Ok(logs);
     }
 
     [Authorize(Roles = "Admin,Organizer")]
     [HttpPost("manage-event")]
-    public async Task<IActionResult> ManageEvent([FromBody] ManageEventCommand command)
+    [Consumes("multipart/form-data")] 
+    public async Task<IActionResult> ManageEvent([FromForm] ManageEventCommand command) 
     {
         command.CurrentUserId = User.Identity?.Name ?? string.Empty;
         command.IsAdmin = User.IsInRole("Admin");

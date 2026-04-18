@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using System;
@@ -48,10 +48,10 @@ public class GetEventSeatsQueryHandler : IRequestHandler<GetEventSeatsQuery, Lis
         }
 
        
-        var eventExists = await _context.Events.AnyAsync(e => e.Id == request.EventId, cancellationToken);
-        if (!eventExists) throw new Exception($"Event with ID {request.EventId} not found.");
+        var eventExists = await _context.Events.AsNoTracking().AnyAsync(e => e.Id == request.EventId, cancellationToken);
+        if (!eventExists) throw new TicketBookingSystem.Application.Exceptions.NotFoundException(nameof(Domain.Entities.Event), request.EventId);
 
-        var seats = await _context.Seats
+        var seats = await _context.Seats.AsNoTracking()
             .Where(s => s.EventId == request.EventId)
             .Select(s => new SeatDto
             {

@@ -1,5 +1,6 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
 using System.Threading;
@@ -24,6 +25,8 @@ public class CompletePaymentCommandHandler : IRequestHandler<CompletePaymentComm
     private readonly IEmailTemplateService _emailTemplateService;
     private readonly ITicketPdfService _ticketPdfService;
     private readonly IJobService _jobService;
+    private readonly IPricingService _pricingService;
+    private readonly ILogger<CompletePaymentCommandHandler> _logger;
 
     public CompletePaymentCommandHandler(
         IApplicationDbContext context,
@@ -31,7 +34,9 @@ public class CompletePaymentCommandHandler : IRequestHandler<CompletePaymentComm
         IEmailService emailService,
         IEmailTemplateService emailTemplateService,
         ITicketPdfService ticketPdfService,
-        IJobService jobService)
+        IJobService jobService,
+        IPricingService pricingService,
+        ILogger<CompletePaymentCommandHandler> logger)
     {
         _context = context;
         _hubService = hubService;
@@ -39,6 +44,8 @@ public class CompletePaymentCommandHandler : IRequestHandler<CompletePaymentComm
         _emailTemplateService = emailTemplateService;
         _ticketPdfService = ticketPdfService;
         _jobService = jobService;
+        _pricingService = pricingService;
+        _logger = logger;
     }
 
     public async Task<bool> Handle(CompletePaymentCommand request, CancellationToken cancellationToken)
@@ -63,15 +70,12 @@ public class CompletePaymentCommandHandler : IRequestHandler<CompletePaymentComm
             _context.AuditLogs.Add(new AuditLog { Username = user.UserName!, Action = "Loyalty Points", Details = $"Earned {pointsToAward} points from Paymob purchase." });
         }
 
-        decimal feePercentage = 0.10m; // 10% platform fee
-
         foreach (var booking in order.Bookings)
         {
             if (booking.Seat.Status == SeatStatus.Locked)
             {
-                // Revenue Split Logic
-                booking.PlatformFee = Math.Round(booking.AmountPaid * feePercentage, 2);
-                booking.OrganizerEarnings = booking.AmountPaid - booking.PlatformFee;
+                // Use centralized revenue split
+                _pricingService.ApplyRevenueSplit(booking);
 
                 booking.Seat.Status = SeatStatus.Booked;
 
@@ -82,8 +86,18 @@ public class CompletePaymentCommandHandler : IRequestHandler<CompletePaymentComm
             }
         }
 
-        try { await _context.SaveChangesAsync(cancellationToken); }
-        catch (DbUpdateConcurrencyException) { return true; }
+        // EH-01 FIX: Do NOT swallow concurrency exceptions — a failed save means
+        // seat statuses were NOT updated, so returning true would be a lie.
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            _logger.LogError(ex, "Concurrency conflict while completing payment for Order {OrderId}. " +
+                "Seat statuses may not have been updated. Manual review required.", request.OrderId);
+            return false;
+        }
 
         foreach (var booking in order.Bookings) { await _hubService.SendSeatBookedNotification(booking.SeatId); }
         await _hubService.SendDashboardUpdate();
@@ -122,11 +136,13 @@ public class CompletePaymentCommandHandler : IRequestHandler<CompletePaymentComm
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Email Failed to {userEmail}: {ex.Message}");
+                    // EH-02 FIX: Use structured logging instead of Console.WriteLine
+                    _logger.LogError(ex, "Failed to send ticket email to {Email} for Order {OrderId}, Seat {SeatNumber}",
+                        userEmail, request.OrderId, booking.Seat.SeatNumber);
                 }
             }
         }
 
         return true;
     }
-}
+}

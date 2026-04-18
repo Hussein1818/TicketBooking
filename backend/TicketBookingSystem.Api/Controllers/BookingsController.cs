@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -59,14 +59,16 @@ public class BookingsController : ControllerBase
     [HttpGet("callback")]
     public IActionResult PaymentCallback([FromQuery] bool success, [FromQuery] int merchant_order_id)
     {
+        // HTML-encode all outputs to prevent XSS injection
         string statusText = success ? "Payment Successful! 🎉" : "Payment Failed ❌";
         string color = success ? "green" : "red";
+        string safeOrderId = System.Net.WebUtility.HtmlEncode(merchant_order_id.ToString());
 
         var htmlContent = $@"
             <html>
                 <body style='text-align:center; padding-top:50px; font-family:Arial;'>
-                    <h1 style='color:{color};'>{statusText}</h1>
-                    <p>Order ID: {merchant_order_id}</p>
+                    <h1 style='color:{color};'>{System.Net.WebUtility.HtmlEncode(statusText)}</h1>
+                    <p>Order ID: {safeOrderId}</p>
                     <script>
                         setTimeout(function() {{ window.location.href = '/index.html'; }}, 3000);
                     </script>
@@ -81,6 +83,22 @@ public class BookingsController : ControllerBase
     public async Task<IActionResult> ValidateTicket([FromBody] ValidateTicketQuery query)
     {
         var result = await _mediator.Send(query);
+        return Ok(result);
+    }
+
+    [Authorize(Roles = "Admin,Staff")]
+    [HttpPost("scan")]
+    public async Task<IActionResult> ScanTicket([FromBody] ScanTicketCommand command)
+    {
+        command.ScannedByUsername = User.Identity?.Name ?? string.Empty;
+        var result = await _mediator.Send(command);
+        
+        if (result.Status == "Invalid")
+            return BadRequest(result);
+            
+        if (result.Status == "Already Used")
+            return Conflict(result);
+
         return Ok(result);
     }
 

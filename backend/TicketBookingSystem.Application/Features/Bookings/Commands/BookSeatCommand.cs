@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using System;
@@ -92,6 +92,10 @@ public class BookSeatCommandHandler : IRequestHandler<BookSeatCommand, int>
         }
         catch (DbUpdateConcurrencyException)
         {
+            // EDGE-01 FIX: Cancel the Hangfire job that was already scheduled
+            // before the save failed — otherwise it becomes an orphaned job that
+            // could release a seat legitimately locked by a different user.
+            _jobService.CancelJob(jobId);
             throw new ConflictException("This seat was just booked by someone else. Please choose another seat.");
         }
 
