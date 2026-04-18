@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -35,6 +35,7 @@ public class GetMyNotificationsHandler : IRequestHandler<GetMyNotificationsQuery
     public async Task<List<NotificationDto>> Handle(GetMyNotificationsQuery request, CancellationToken ct)
     {
         return await _context.Notifications
+            .AsNoTracking()
             .Where(n => n.UserId == request.UserId)
             .OrderByDescending(n => n.CreatedAt)
             .Take(20)

@@ -17,7 +17,7 @@ namespace TicketBookingSystem.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.14")
+                .HasAnnotation("ProductVersion", "9.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -204,6 +204,9 @@ namespace TicketBookingSystem.Infrastructure.Migrations
                     b.Property<decimal>("ExchangeRate")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<bool>("IsUsed")
+                        .HasColumnType("bit");
+
                     b.Property<string>("JobId")
                         .HasColumnType("nvarchar(max)");
 
@@ -215,6 +218,9 @@ namespace TicketBookingSystem.Infrastructure.Migrations
 
                     b.Property<decimal>("PlatformFee")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("ScannedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<int>("SeatId")
                         .HasColumnType("int");
@@ -249,6 +255,13 @@ namespace TicketBookingSystem.Infrastructure.Migrations
                     b.Property<DateTime>("EventDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("FullRefundDays")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("IsClosed")
                         .HasColumnType("bit");
 
@@ -262,6 +275,12 @@ namespace TicketBookingSystem.Infrastructure.Migrations
                     b.Property<string>("OrganizerId")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("PartialRefundDays")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("PartialRefundPercentage")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Venue")
                         .IsRequired()

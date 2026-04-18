@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using TicketBookingSystem.Application.Interfaces;
@@ -48,13 +48,16 @@ public class GetUserTicketsQueryHandler : IRequestHandler<GetUserTicketsQuery, L
         if (string.IsNullOrEmpty(authenticatedUser)) return new List<UserTicketDto>();
 
         var bookings = await _context.Bookings
+            .AsNoTracking()
             .Include(b => b.Seat)
             .ThenInclude(s => s.Event)
             .Where(b => b.UserId == authenticatedUser && b.Seat.Status == SeatStatus.Booked)
             .OrderByDescending(b => b.Id)
             .ToListAsync(cancellationToken);
 
-        var secretKey = _configuration["Jwt:Key"] ?? string.Empty;
+        // SEC-07: Use a dedicated HMAC key for QR codes, separate from JWT signing key
+        var secretKey = _configuration["QrCode:HmacKey"]
+            ?? throw new InvalidOperationException("QrCode:HmacKey is not configured.");
         var dtos = new List<UserTicketDto>();
 
         foreach (var b in bookings)

@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  api:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: ticket_booking_api
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      # السيستم هيقرأ الكونكشن سترينج دي أوتوماتيك بدل اللي في appsettings.json
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=TicketBookingDB;User Id=sa;Password=Hussein!Monster2026;TrustServerCertificate=True;
+      - ConnectionStrings__Redis=redis:6379
+    depends_on:
+      - sqlserver
+      - redis
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: ticket_booking_sql
+    restart: always
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=Hussein!Monster2026
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlvolume:/var/opt/mssql
+
+  redis:
+    image: redis:alpine
+    container_name: ticket_booking_redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+volumes:
+  sqlvolume:

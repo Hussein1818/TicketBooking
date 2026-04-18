@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using TicketBookingSystem.Application.Interfaces;
 using TicketBookingSystem.Domain.Entities;
@@ -35,9 +35,9 @@ public class AddReviewHandler : IRequestHandler<AddReviewCommand, bool>
         var authUser = _currentUserService.Username;
         if (string.IsNullOrEmpty(authUser)) return false;
 
+        // PERF: No Include() needed — EF Core translates navigation properties
+        // in the WHERE clause into SQL JOINs without materializing entities.
         var hasAttended = await _context.Bookings
-            .Include(b => b.Seat)
-            .ThenInclude(s => s.Event)
             .AnyAsync(b => b.Seat.EventId == request.EventId
                         && b.UserId == authUser
                         && b.Seat.Status == SeatStatus.Booked
@@ -94,6 +94,7 @@ public class GetEventReviewsHandler : IRequestHandler<GetEventReviewsQuery, List
     public async Task<List<ReviewDto>> Handle(GetEventReviewsQuery request, CancellationToken ct)
     {
         return await _context.Reviews
+            .AsNoTracking()
             .Where(r => r.EventId == request.EventId)
             .OrderByDescending(r => r.CreatedAt)
             .Select(r => new ReviewDto

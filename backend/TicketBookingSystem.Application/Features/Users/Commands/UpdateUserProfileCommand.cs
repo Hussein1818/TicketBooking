@@ -1,9 +1,10 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using TicketBookingSystem.Application.Exceptions;
 using TicketBookingSystem.Application.Interfaces;
 
 namespace TicketBookingSystem.Application.Features.Users.Commands;
@@ -31,7 +32,7 @@ public class UpdateUserProfileCommandHandler : IRequestHandler<UpdateUserProfile
     public async Task<bool> Handle(UpdateUserProfileCommand request, CancellationToken cancellationToken)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
-        if (user == null) throw new Exception("User not found");
+        if (user == null) throw new NotFoundException(nameof(Domain.Entities.User), request.UserId);
 
         user.FullName = request.FullName;
         user.NationalId = request.NationalId;

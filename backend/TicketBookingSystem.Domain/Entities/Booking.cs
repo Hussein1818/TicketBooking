@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace TicketBookingSystem.Domain.Entities;
 
@@ -18,6 +18,16 @@ public class Booking
 
     public string? JobId { get; set; }
     public int? OrderId { get; set; }
+
+    // Ticket Scanning State
+    public bool IsUsed { get; private set; }
+    public DateTime? ScannedAt { get; private set; }
+
+    public void MarkAsUsed()
+    {
+        IsUsed = true;
+        ScannedAt = DateTime.UtcNow;
+    }
 
     public Seat Seat { get; set; } = null!;
     public User User { get; set; } = null!;

@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
@@ -72,6 +72,9 @@ public class AuthController : ControllerBase
     [HttpPost("change-password")]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordCommand command)
     {
+        //  Always use the authenticated user's identity, never trust the request body
+        command.Username = User.Identity?.Name ?? string.Empty;
+
         var success = await _mediator.Send(command);
         if (!success)
             return BadRequest(new { Message = "Invalid current password." });
@@ -95,5 +98,21 @@ public class AuthController : ControllerBase
     {
         await _mediator.Send(command);
         return Ok(new { Message = "Password has been reset successfully." });
+    }
+
+    [Authorize(Roles = "Admin,Organizer")]
+    [HttpPost("blast-campaign")]
+    public async Task<IActionResult> LaunchBlastCampaign([FromBody] TicketBookingSystem.Application.Features.Admin.Commands.BlastCampaignCommand command)
+    {
+        
+        command.CurrentUserId = User.Identity?.Name ?? string.Empty;
+        command.IsAdmin = User.IsInRole("Admin");
+
+        var usersNotified = await _mediator.Send(command);
+
+        if (usersNotified == 0)
+            return BadRequest(new { Message = "No attendees found to notify for this event." });
+
+        return Ok(new { Message = $"Blast campaign launched successfully! {usersNotified} attendees are being notified." });
     }
 }

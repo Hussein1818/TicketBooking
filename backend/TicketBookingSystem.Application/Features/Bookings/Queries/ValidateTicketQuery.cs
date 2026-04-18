@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using TicketBookingSystem.Application.Interfaces;
@@ -58,7 +58,9 @@ public class ValidateTicketQueryHandler : IRequestHandler<ValidateTicketQuery, V
         var providedSignature = parts[3].Trim();
 
         var rawData = $"TICKET|{seatId}|{username}";
-        var secretKey = _configuration["Jwt:Key"] ?? string.Empty;
+        // SEC-07: Use a dedicated HMAC key for QR codes, separate from JWT signing key
+        var secretKey = _configuration["QrCode:HmacKey"]
+            ?? throw new InvalidOperationException("QrCode:HmacKey is not configured.");
 
         using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secretKey));
         var expectedSignature = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(rawData)));
@@ -68,7 +70,7 @@ public class ValidateTicketQueryHandler : IRequestHandler<ValidateTicketQuery, V
             return new ValidateTicketResult { IsValid = false, Message = "Ticket signature verification failed. Forged ticket detected!" };
         }
 
-        var seat = await _context.Seats.FirstOrDefaultAsync(s => s.Id == seatId, cancellationToken);
+        var seat = await _context.Seats.AsNoTracking().FirstOrDefaultAsync(s => s.Id == seatId, cancellationToken);
         if (seat == null)
         {
             return new ValidateTicketResult { IsValid = false, Message = $"Seat ID {seatId} does not exist in Database." };
@@ -80,6 +82,7 @@ public class ValidateTicketQueryHandler : IRequestHandler<ValidateTicketQuery, V
         }
 
         var booking = await _context.Bookings
+            .AsNoTracking()
             .Where(b => b.SeatId == seatId)
             .OrderByDescending(b => b.Id)
             .FirstOrDefaultAsync(cancellationToken);

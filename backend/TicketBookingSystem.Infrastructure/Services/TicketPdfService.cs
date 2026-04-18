@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration;
 using QRCoder;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -22,7 +22,9 @@ public class TicketPdfService : ITicketPdfService
 
     public Task<byte[]> GenerateTicketPdfAsync(string eventName, string venue, string date, string seatNumber, string username, int seatId)
     {
-        var secretKey = _configuration["Jwt:Key"] ?? string.Empty;
+        // SEC-07: Use a dedicated HMAC key for QR codes, separate from JWT signing key
+        var secretKey = _configuration["QrCode:HmacKey"]
+            ?? throw new InvalidOperationException("QrCode:HmacKey is not configured. Cannot generate secure ticket QR codes.");
         var rawData = $"TICKET|{seatId}|{username.ToLower()}";
 
         using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secretKey));

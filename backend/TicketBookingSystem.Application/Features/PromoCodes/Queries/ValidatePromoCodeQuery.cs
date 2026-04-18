@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using TicketBookingSystem.Application.Interfaces;
 using System.Threading;
@@ -23,7 +23,9 @@ public class ValidatePromoCodeQueryHandler : IRequestHandler<ValidatePromoCodeQu
     public async Task<decimal> Handle(ValidatePromoCodeQuery request, CancellationToken cancellationToken)
     {
         var promo = await _context.PromoCodes
-            .FirstOrDefaultAsync(p => p.Code == request.Code.ToUpper().Trim() && p.IsActive, cancellationToken);
+            .FirstOrDefaultAsync(p => p.Code == request.Code.ToUpper().Trim()
+                && p.IsActive
+                && p.ExpirationDate > DateTime.UtcNow, cancellationToken);
 
         if (promo == null || promo.CurrentUsage >= promo.MaxUsage)
             return 0;

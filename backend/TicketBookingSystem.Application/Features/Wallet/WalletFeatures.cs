@@ -1,10 +1,11 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using TicketBookingSystem.Application.Exceptions;
 using TicketBookingSystem.Application.Interfaces;
 using TicketBookingSystem.Domain.Entities;
 using TicketBookingSystem.Domain.Enums;
@@ -52,7 +53,7 @@ public class AddFundsHandler : IRequestHandler<AddFundsCommand, decimal>
         var user = await _context.Users.FirstOrDefaultAsync(u => u.UserName == request.Username, ct);
 
         if (user == null)
-            throw new Exception("User not found");
+            throw new NotFoundException(nameof(Domain.Entities.User), request.Username);
 
         user.AddFunds(request.Amount);
 
@@ -62,7 +63,7 @@ public class AddFundsHandler : IRequestHandler<AddFundsCommand, decimal>
         }
         catch (DbUpdateConcurrencyException)
         {
-            throw new Exception("Concurrency conflict occurred while adding funds.");
+            throw new ConflictException("Concurrency conflict occurred while adding funds. Please try again.");
         }
 
         return user.WalletBalance;
@@ -81,12 +82,14 @@ public class PayWithWalletHandler : IRequestHandler<PayWithWalletCommand, bool>
     private readonly IApplicationDbContext _context;
     private readonly ITicketHubService _hub;
     private readonly IJobService _jobService;
+    private readonly IPricingService _pricingService;
 
-    public PayWithWalletHandler(IApplicationDbContext context, ITicketHubService hub, IJobService jobService)
+    public PayWithWalletHandler(IApplicationDbContext context, ITicketHubService hub, IJobService jobService, IPricingService pricingService)
     {
         _context = context;
         _hub = hub;
         _jobService = jobService;
+        _pricingService = pricingService;
     }
 
     public async Task<bool> Handle(PayWithWalletCommand request, CancellationToken ct)
@@ -105,51 +108,29 @@ public class PayWithWalletHandler : IRequestHandler<PayWithWalletCommand, bool>
             return false;
 
         decimal totalBasePrice = bookings.Sum(b => b.Seat.Price);
-        decimal originalTotalEgp = totalBasePrice;
 
-        if (user.Tier != SubscriptionTier.None && user.TierExpiryDate.HasValue && user.TierExpiryDate.Value > DateTime.UtcNow)
-        {
-            decimal discount = user.Tier switch
-            {
-                SubscriptionTier.Silver => 0.10m,
-                SubscriptionTier.Gold => 0.20m,
-                SubscriptionTier.VIP => 0.30m,
-                _ => 0m
-            };
-            totalBasePrice -= totalBasePrice * discount;
-        }
+        // Use centralized pricing service for discount calculation
+        var pricing = await _pricingService.CalculateDiscountedPriceAsync(
+            totalBasePrice, user, request.PromoCode, ct);
 
-        if (!string.IsNullOrWhiteSpace(request.PromoCode))
-        {
-            var promo = await _context.PromoCodes.FirstOrDefaultAsync(p => p.Code == request.PromoCode && p.IsActive, ct);
-            if (promo != null && promo.CurrentUsage < promo.MaxUsage)
-            {
-                totalBasePrice -= totalBasePrice * (promo.DiscountPercentage / 100);
-                promo.CurrentUsage += 1;
-            }
-        }
-
-        if (!user.DeductFunds(totalBasePrice))
+        if (!user.DeductFunds(pricing.FinalPriceEgp))
             return false;
 
         // Give 1 loyalty point for every 10 EGP spent
-        int pointsToAward = (int)(totalBasePrice / 10);
+        int pointsToAward = (int)(pricing.FinalPriceEgp / 10);
         user.AddLoyaltyPoints(pointsToAward);
         _context.AuditLogs.Add(new AuditLog { Username = request.Username, Action = "Loyalty Points",
             Details = $"Earned {pointsToAward} points from wallet purchase." });
 
-        decimal feePercentage = 0.10m; // 10% platform fee
-
         foreach (var booking in bookings)
         {
-            if (originalTotalEgp > 0)
+            if (pricing.OriginalPriceEgp > 0)
             {
-                booking.AmountPaid = Math.Round((booking.Seat.Price / originalTotalEgp) * totalBasePrice, 2);
+                booking.AmountPaid = Math.Round((booking.Seat.Price / pricing.OriginalPriceEgp) * pricing.FinalPriceEgp, 2);
             }
 
-            // Revenue Split Logic
-            booking.PlatformFee = Math.Round(booking.AmountPaid * feePercentage, 2);
-            booking.OrganizerEarnings = booking.AmountPaid - booking.PlatformFee;
+            // Use centralized revenue split
+            _pricingService.ApplyRevenueSplit(booking);
 
             booking.Seat.Status = SeatStatus.Booked;
 
@@ -184,4 +165,4 @@ public class PayWithWalletHandler : IRequestHandler<PayWithWalletCommand, bool>
 
         return true;
     }
-}
+}

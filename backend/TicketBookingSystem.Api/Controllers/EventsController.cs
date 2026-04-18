@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TicketBookingSystem.Application.Features.Events.Commands;
@@ -21,15 +21,16 @@ public class EventsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAllEvents([FromQuery] GetEventsQuery query)
+    public async Task<IActionResult> GetAllEvents([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
-        var events = await _mediator.Send(query);
+        var events = await _mediator.Send(new GetEventsQuery { Page = page, PageSize = pageSize });
         return Ok(events);
     }
 
     [Authorize(Roles = "Admin,Organizer")]
     [HttpPost]
-    public async Task<IActionResult> CreateEvent([FromBody] ManageEventCommand command)
+    [Consumes("multipart/form-data")] 
+    public async Task<IActionResult> CreateEvent([FromForm] ManageEventCommand command) 
     {
         command.Id = 0;
         command.CurrentUserId = User.Identity?.Name ?? string.Empty;
@@ -41,7 +42,8 @@ public class EventsController : ControllerBase
 
     [Authorize(Roles = "Admin,Organizer")]
     [HttpPut("{eventId}")]
-    public async Task<IActionResult> UpdateEvent(int eventId, [FromBody] ManageEventCommand command)
+    [Consumes("multipart/form-data")] 
+    public async Task<IActionResult> UpdateEvent(int eventId, [FromForm] ManageEventCommand command) 
     {
         command.Id = eventId;
         command.CurrentUserId = User.Identity?.Name ?? string.Empty;
