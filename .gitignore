@@ -1,17 +1,13 @@
-
-
 # User-specific files 
 *.rsuser
 *.suo
 *.user
 *.userosprefs
 *.sln.docstates
-
-# Visual Studio cache/options directory 
 .vs/
 *.vssscc
 
-# Build results (ملفات البيلد اللي بتتولد أوتوماتيك ومينفعش تترفع)
+# Build results (الملفات اللي بتتولد أوتوماتيك)
 [Dd]ebug/
 [Dd]ebugPublic/
 [Rr]elease/
@@ -25,6 +21,8 @@ bld/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
+publish/
+output/
 
 # Profiler, coverage & testing reports
 *.psess
@@ -45,7 +43,8 @@ packages/
 *.ldf
 *.ndf
 
-# Configuration and secrets 
+# Configuration and secrets (تأمين الباسوردات)
+appsettings.json
 appsettings.Development.json
 appsettings.Local.json
 secrets.json
@@ -63,7 +62,7 @@ ehthumbs.db
 Thumbs.db
 desktop.ini
 
-
+# Frontend & Node
 node_modules/
 npm-debug.log
 yarn-error.log
