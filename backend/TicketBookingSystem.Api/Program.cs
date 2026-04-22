@@ -3,6 +3,7 @@ using Hangfire;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -10,6 +11,7 @@ using System.Text;
 using TicketBookingSystem.Api.Middlewares;
 using TicketBookingSystem.Application.Features.Behaviors;
 using TicketBookingSystem.Application.Interfaces;
+using TicketBookingSystem.Domain.Entities;
 using TicketBookingSystem.Infrastructure.Hubs;
 using TicketBookingSystem.Infrastructure.Persistence;
 using TicketBookingSystem.Infrastructure.Services;
@@ -187,5 +189,13 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
 });
 app.MapControllers();
 app.MapHub<TicketHub>("/ticketHub");
+
+// Seed Initial Admins
+using (var scope = app.Services.CreateScope())
+{
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
+    
+    await AdminSeeder.SeedAdminsAsync(userManager, builder.Configuration);
+}
 
 app.Run();

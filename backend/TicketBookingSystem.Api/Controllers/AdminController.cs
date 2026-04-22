@@ -59,4 +59,12 @@ public class AdminController : ControllerBase
         var userId = await _mediator.Send(command);
         return Ok(new { Message = "Staff user created successfully.", UserId = userId });
     }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("create-admin")]
+    public async Task<IActionResult> CreateAdmin([FromBody] CreateAdminCommand command)
+    {
+        var userId = await _mediator.Send(command);
+        return Ok(new { Message = "Admin created successfully.", UserId = userId });
+    }
 }
