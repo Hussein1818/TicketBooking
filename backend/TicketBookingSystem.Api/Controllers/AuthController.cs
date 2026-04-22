@@ -99,7 +99,7 @@ public class AuthController : ControllerBase
         await _mediator.Send(command);
         return Ok(new { Message = "Password has been reset successfully." });
     }
-
+    //  Admin-only endpoint to launch blast campaigns for event attendees
     [Authorize(Roles = "Admin,Organizer")]
     [HttpPost("blast-campaign")]
     public async Task<IActionResult> LaunchBlastCampaign([FromBody] TicketBookingSystem.Application.Features.Admin.Commands.BlastCampaignCommand command)
