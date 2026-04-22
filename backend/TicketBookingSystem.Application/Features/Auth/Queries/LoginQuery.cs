@@ -16,7 +16,8 @@ public class AuthResponseDto
 
 public class LoginQuery : IRequest<AuthResponseDto>
 {
-    public string Username { get; set; } = string.Empty;
+    
+    public string UsernameOrEmail { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
 }
 
@@ -33,12 +34,21 @@ public class LoginQueryHandler : IRequestHandler<LoginQuery, AuthResponseDto>
 
     public async Task<AuthResponseDto> Handle(LoginQuery request, CancellationToken cancellationToken)
     {
-        var user = await _userManager.FindByNameAsync(request.Username);
+        User? user = null;
+
+        
+        if (request.UsernameOrEmail.Contains("@"))
+        {
+            user = await _userManager.FindByEmailAsync(request.UsernameOrEmail);
+        }
+        else
+        {
+            user = await _userManager.FindByNameAsync(request.UsernameOrEmail);
+        }
 
         if (user == null || !await _userManager.CheckPasswordAsync(user, request.Password))
             throw new UnauthorizedAccessException("Invalid credentials.");
 
-        
         if (!await _userManager.IsEmailConfirmedAsync(user))
             throw new UnauthorizedAccessException("Please confirm your email before logging in.");
 
