@@ -60,6 +60,7 @@ public class AdminController : ControllerBase
         return Ok(new { Message = "Staff user created successfully.", UserId = userId });
     }
 
+    //create admin
     [Authorize(Roles = "Admin")]
     [HttpPost("create-admin")]
     public async Task<IActionResult> CreateAdmin([FromBody] CreateAdminCommand command)

@@ -98,7 +98,7 @@ public class BlastCampaignCommandHandler : IRequestHandler<BlastCampaignCommand,
 
         await _context.SaveChangesAsync(ct);
 
-        // 3. Fire Real-time SignalR Notifications
+        // 3. Fire Real-time SignalR Notifications.
         foreach (var attendee in attendees)
         {
             await _hubService.SendUserNotification(attendee.Username, request.Message, "BlastCampaign");
