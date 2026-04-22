@@ -1,4 +1,5 @@
-﻿using FluentValidation;
+﻿// FORCE UPDATE TO FIX GITHUB DESYNC
+using FluentValidation;
 using Hangfire;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -107,3 +108,4 @@ public class BlastCampaignCommandHandler : IRequestHandler<BlastCampaignCommand,
         return attendees.Count;
     }
 }
+
