@@ -5,6 +5,7 @@ using TicketBookingSystem.Application.Features.Events.Commands;
 using TicketBookingSystem.Application.Features.Events.Queries;
 using TicketBookingSystem.Application.Features.Seats.Commands;
 using TicketBookingSystem.Application.Features.Seats.Queries;
+using TicketBookingSystem.Application.Features.Events.Queries.GetEventById;
 using System.Threading.Tasks;
 
 namespace TicketBookingSystem.Api.Controllers;
@@ -67,5 +68,12 @@ public class EventsController : ControllerBase
     {
         var seats = await _mediator.Send(new GetEventSeatsQuery { EventId = eventId });
         return Ok(seats);
+    }
+    [HttpGet("{eventId}")]
+    public async Task<IActionResult> GetEventById(int eventId)
+    {
+        var query = new TicketBookingSystem.Application.Features.Events.Queries.GetEventById.GetEventByIdQuery { EventId = eventId };
+        var eventDetails = await _mediator.Send(query);
+        return Ok(eventDetails);
     }
 }
