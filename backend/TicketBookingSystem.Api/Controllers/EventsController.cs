@@ -7,6 +7,7 @@ using TicketBookingSystem.Application.Features.Seats.Commands;
 using TicketBookingSystem.Application.Features.Seats.Queries;
 using TicketBookingSystem.Application.Features.Events.Queries.GetEventById;
 using System.Threading.Tasks;
+using System.Security.Claims;
 
 namespace TicketBookingSystem.Api.Controllers;
 
@@ -34,7 +35,7 @@ public class EventsController : ControllerBase
     public async Task<IActionResult> CreateEvent([FromForm] ManageEventCommand command) 
     {
         command.Id = 0;
-        command.CurrentUserId = User.Identity?.Name ?? string.Empty;
+        command.CurrentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
         command.IsAdmin = User.IsInRole("Admin");
 
         var eventId = await _mediator.Send(command);
@@ -47,7 +48,7 @@ public class EventsController : ControllerBase
     public async Task<IActionResult> UpdateEvent(int eventId, [FromForm] ManageEventCommand command) 
     {
         command.Id = eventId;
-        command.CurrentUserId = User.Identity?.Name ?? string.Empty;
+        command.CurrentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
         command.IsAdmin = User.IsInRole("Admin");
 
         await _mediator.Send(command);
