@@ -47,5 +47,12 @@ public class ApplicationDbContext : IdentityDbContext<User>, IApplicationDbConte
             .HasOne(n => n.User)
             .WithMany()
             .HasForeignKey(n => n.UserId);
+
+        modelBuilder.Entity<Event>()
+            .HasOne(e => e.Organizer)
+            .WithMany()
+            .HasForeignKey(e => e.OrganizerId)
+            .OnDelete(DeleteBehavior.Restrict);
+
     }
 }
