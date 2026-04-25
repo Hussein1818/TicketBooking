@@ -20,6 +20,7 @@ public class Event
     public int PartialRefundDays { get; private set; } = 3;
     public decimal PartialRefundPercentage { get; private set; } = 50;
     public string OrganizerId { get; private set; } = string.Empty;
+    public virtual User? Organizer { get; private set; }
 
     private readonly List<Seat> _seats = new();
     public IReadOnlyCollection<Seat> Seats => _seats.AsReadOnly();
