@@ -27,8 +27,8 @@ public class EventDetailsDto
     public decimal PartialRefundPercentage { get; set; }
 
     public string OrganizerId { get; set; } = string.Empty;
+    public string OrganizerName { get; set; } = string.Empty;
 
-    
     public int TotalSeats { get; set; }
     public int AvailableSeats { get; set; }
 }
@@ -69,8 +69,10 @@ public class GetEventByIdQueryHandler : IRequestHandler<GetEventByIdQuery, Event
                 PartialRefundDays = e.PartialRefundDays,
                 PartialRefundPercentage = e.PartialRefundPercentage,
                 OrganizerId = e.OrganizerId,
+                OrganizerName = e.Organizer != null ? e.Organizer.FullName : "Unknown",
 
-                
+
+
                 TotalSeats = e.Seats.Count(),
                 AvailableSeats = e.Seats.Count(s => s.Status == SeatStatus.Available)
             })
