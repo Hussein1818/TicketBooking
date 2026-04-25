@@ -29,7 +29,7 @@ namespace TicketBookingSystem.Infrastructure.Migrations
                 column: "OrganizerId",
                 principalTable: "AspNetUsers",
                 principalColumn: "Id",
-                onDelete: ReferentialAction.Cascade);
+                onDelete: ReferentialAction.Restrict);
         }
 
         /// <inheritdoc />
