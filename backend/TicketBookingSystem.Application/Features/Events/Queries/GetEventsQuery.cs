@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using TicketBookingSystem.Application.Interfaces;
+using TicketBookingSystem.Domain.Enums;
 
 namespace TicketBookingSystem.Application.Features.Events.Queries;
 
@@ -15,8 +16,8 @@ public class GetEventsQuery : IRequest<PagedResult<EventDto>>
 {
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 20;
+    public string? Category { get; set; } 
 }
-
 
 public class EventDto
 {
@@ -28,6 +29,8 @@ public class EventDto
     public int MaxTicketsPerUser { get; set; }
     public string Category { get; set; } = string.Empty;
     public string ImageUrl { get; set; } = string.Empty;
+    public decimal TicketPrice { get; set; }
+    public int AttendingCount { get; set; }
 }
 
 public class GetEventsQueryHandler : IRequestHandler<GetEventsQuery, PagedResult<EventDto>>
@@ -46,17 +49,25 @@ public class GetEventsQueryHandler : IRequestHandler<GetEventsQuery, PagedResult
         int page = Math.Max(1, request.Page);
         int pageSize = Math.Clamp(request.PageSize, 1, 50);
 
-        var cacheKey = $"Events_Page_{page}_Size_{pageSize}";
+       
+        var categoryKey = string.IsNullOrWhiteSpace(request.Category) ? "All" : request.Category.Trim();
+        var cacheKey = $"Events_Page_{page}_Size_{pageSize}_Cat_{categoryKey}";
 
-        
         var cachedEvents = await _cache.GetStringAsync(cacheKey, cancellationToken);
         if (!string.IsNullOrEmpty(cachedEvents))
         {
             return JsonSerializer.Deserialize<PagedResult<EventDto>>(cachedEvents)!;
         }
 
-        var query = _context.Events.AsNoTracking()
-            .OrderByDescending(e => e.EventDate);
+        var query = _context.Events.AsNoTracking().AsQueryable();
+
+        
+        if (!string.IsNullOrWhiteSpace(request.Category))
+        {
+            query = query.Where(e => e.Category.ToLower() == request.Category.ToLower());
+        }
+
+        query = query.OrderByDescending(e => e.EventDate);
 
         int totalCount = await query.CountAsync(cancellationToken);
 
@@ -72,7 +83,9 @@ public class GetEventsQueryHandler : IRequestHandler<GetEventsQuery, PagedResult
                 IsClosed = e.IsClosed,
                 MaxTicketsPerUser = e.MaxTicketsPerUser,
                 Category = e.Category,
-                ImageUrl = e.ImageUrl
+                ImageUrl = e.ImageUrl,
+                TicketPrice = e.TicketPrice,
+                AttendingCount = e.Seats.Count(s => s.Status == SeatStatus.Booked)
             })
             .ToListAsync(cancellationToken);
 
@@ -84,7 +97,6 @@ public class GetEventsQueryHandler : IRequestHandler<GetEventsQuery, PagedResult
             PageSize = pageSize
         };
 
-        
         var cacheOptions = new DistributedCacheEntryOptions
         {
             AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5)
@@ -94,4 +106,4 @@ public class GetEventsQueryHandler : IRequestHandler<GetEventsQuery, PagedResult
 
         return result;
     }
-}
+}

@@ -77,4 +77,11 @@ public class EventsController : ControllerBase
         var eventDetails = await _mediator.Send(query);
         return Ok(eventDetails);
     }
+    [Authorize(Roles = "Admin,Organizer")]
+    [HttpGet("{eventId}/analytics")]
+    public async Task<IActionResult> GetEventAnalytics(int eventId)
+    {
+        var analytics = await _mediator.Send(new GetEventAnalyticsQuery { EventId = eventId });
+        return Ok(analytics);
+    }
 }

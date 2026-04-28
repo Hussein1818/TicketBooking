@@ -2,6 +2,8 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Security.Claims;
 using System.Threading.Tasks;
@@ -22,13 +24,6 @@ public class UsersController : ControllerBase
         _mediator = mediator;
     }
 
-    public class UpdateProfileRequest
-    {
-        public string FullName { get; set; } = string.Empty;
-        public string NationalId { get; set; } = string.Empty;
-        public IFormFile? ProfilePicture { get; set; }
-    }
-
     // SEC-08: Allowed extensions and max file size for profile picture uploads
     private static readonly HashSet<string> AllowedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -38,41 +33,35 @@ public class UsersController : ControllerBase
 
     [HttpPut("profile")]
     [Consumes("multipart/form-data")]
-    public async Task<IActionResult> UpdateProfile([FromForm] UpdateProfileRequest request)
+    public async Task<IActionResult> UpdateProfile([FromForm] UpdateUserProfileCommand command)
     {
+       
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        var command = new UpdateUserProfileCommand
-        {
-            UserId = userId,
-            FullName = request.FullName,
-            NationalId = request.NationalId
-        };
+        command.UserId = userId;
 
-        if (request.ProfilePicture != null && request.ProfilePicture.Length > 0)
+        if (command.ProfilePicture != null && command.ProfilePicture.Length > 0)
         {
             // SEC-08: Validate file size
-            if (request.ProfilePicture.Length > MaxProfilePictureSize)
+            if (command.ProfilePicture.Length > MaxProfilePictureSize)
                 return BadRequest(new { Message = "Profile picture must be smaller than 2 MB." });
 
             // SEC-08: Validate file extension
-            var extension = Path.GetExtension(request.ProfilePicture.FileName);
+            var extension = Path.GetExtension(command.ProfilePicture.FileName);
             if (string.IsNullOrEmpty(extension) || !AllowedImageExtensions.Contains(extension))
                 return BadRequest(new { Message = $"Invalid file type. Allowed types: {string.Join(", ", AllowedImageExtensions)}" });
-
-            using var memoryStream = new MemoryStream();
-            await request.ProfilePicture.CopyToAsync(memoryStream);
-            command.ProfilePictureContent = memoryStream.ToArray();
-            command.ProfilePictureExtension = extension;
         }
 
-        var result = await _mediator.Send(command);
+        
+        var profilePictureUrl = await _mediator.Send(command);
 
-        if (result)
-            return Ok(new { Message = "Profile updated and Fan ID generated successfully!" });
-
-        return BadRequest("Failed to update profile.");
+        
+        return Ok(new
+        {
+            Message = "Profile updated and Fan ID generated successfully!",
+            ProfilePictureUrl = profilePictureUrl
+        });
     }
 
     [HttpGet("fan-id/download")]
@@ -85,5 +74,14 @@ public class UsersController : ControllerBase
         var pdfBytes = await _mediator.Send(query);
 
         return File(pdfBytes, "application/pdf", $"FanID_{userId}.pdf");
+    }
+    [HttpGet("profile")]
+    public async Task<IActionResult> GetProfile()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var profile = await _mediator.Send(new TicketBookingSystem.Application.Features.Users.Queries.GetUserProfileQuery { UserId = userId });
+        return Ok(profile);
     }
 }
