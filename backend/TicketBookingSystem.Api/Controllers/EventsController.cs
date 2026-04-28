@@ -31,24 +31,36 @@ public class EventsController : ControllerBase
 
     [Authorize(Roles = "Admin,Organizer")]
     [HttpPost]
-    [Consumes("multipart/form-data")] 
-    public async Task<IActionResult> CreateEvent([FromForm] ManageEventCommand command) 
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> CreateEvent([FromForm] ManageEventCommand command)
     {
         command.Id = 0;
-        command.CurrentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+
+        
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized(new { Message = "Invalid Token: User ID is missing from claims." });
+
+        command.CurrentUserId = userId;
         command.IsAdmin = User.IsInRole("Admin");
 
-        var eventId = await _mediator.Send(command);
-        return Ok(new { Message = "Event created successfully", EventId = eventId });
+        await _mediator.Send(command);
+        return Ok(new { Message = "Event created successfully." });
     }
-
     [Authorize(Roles = "Admin,Organizer")]
     [HttpPut("{eventId}")]
-    [Consumes("multipart/form-data")] 
-    public async Task<IActionResult> UpdateEvent(int eventId, [FromForm] ManageEventCommand command) 
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UpdateEvent(int eventId, [FromForm] ManageEventCommand command)
     {
         command.Id = eventId;
-        command.CurrentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized(new { Message = "Invalid Token: User ID is missing from claims." });
+
+        command.CurrentUserId = userId;
         command.IsAdmin = User.IsInRole("Admin");
 
         await _mediator.Send(command);
