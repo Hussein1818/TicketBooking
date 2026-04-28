@@ -11,14 +11,13 @@ using TicketBookingSystem.Domain.Entities;
 
 namespace TicketBookingSystem.Application.Features.Users.Commands;
 
-
 public class UpdateUserProfileCommand : IRequest<string>
 {
     public string UserId { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
     public string NationalId { get; set; } = string.Empty;
-
     public string Address { get; set; } = string.Empty;
+    public string PhoneNumber { get; set; } = string.Empty; 
     public IFormFile? ProfilePicture { get; set; }
 }
 
@@ -47,6 +46,9 @@ public class UpdateUserProfileCommandHandler : IRequestHandler<UpdateUserProfile
         if (!string.IsNullOrWhiteSpace(request.Address))
             user.Address = request.Address;
 
+        if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
+            user.PhoneNumber = request.PhoneNumber;
+
         if (string.IsNullOrEmpty(user.FanIdNumber))
         {
             user.FanIdNumber = $"FAN-{DateTime.UtcNow:yyMMdd}-{user.Id.Substring(0, 4).ToUpper()}";
@@ -54,7 +56,6 @@ public class UpdateUserProfileCommandHandler : IRequestHandler<UpdateUserProfile
 
         string pictureUrl = user.ProfilePictureUrl;
 
-        
         if (request.ProfilePicture != null && request.ProfilePicture.Length > 0)
         {
             var extension = Path.GetExtension(request.ProfilePicture.FileName);
@@ -69,6 +70,6 @@ public class UpdateUserProfileCommandHandler : IRequestHandler<UpdateUserProfile
         if (!result.Succeeded)
             throw new BadRequestException("Failed to update profile details.");
 
-        return pictureUrl; 
+        return pictureUrl;
     }
 }
