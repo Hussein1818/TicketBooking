@@ -10,6 +10,7 @@ public class User : IdentityUser
     public UserRole Role { get; set; } = UserRole.Customer;
     public string FullName { get; set; } = string.Empty;
     public string NationalId { get; set; } = string.Empty;
+    public string Address { get; set; } = string.Empty;
     public string ProfilePictureUrl { get; set; } = string.Empty;
     public string FanIdNumber { get; set; } = string.Empty;
     public byte[] Version { get; set; } = Array.Empty<byte>();

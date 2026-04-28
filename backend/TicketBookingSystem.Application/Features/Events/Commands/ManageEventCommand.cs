@@ -19,8 +19,9 @@ public class ManageEventCommand : IRequest<int>
     public bool IsClosed { get; set; }
     public int MaxTicketsPerUser { get; set; }
     public string Category { get; set; } = "General";
+    public decimal TicketPrice { get; set; } = 0;
 
-    
+
     public IFormFile? CoverImage { get; set; }
 
     public int FullRefundDays { get; set; } = 7;
@@ -66,11 +67,11 @@ public class ManageEventCommandHandler : IRequestHandler<ManageEventCommand, int
             if (!request.IsAdmin && eventEntity.OrganizerId != request.CurrentUserId)
                 throw new UnauthorizedAccessException("You don't have permission to modify this event.");
 
-            eventEntity.UpdateDetails(request.Name, request.EventDate, request.Venue, request.IsClosed, request.MaxTicketsPerUser, request.Category, imageUrl, request.FullRefundDays, request.PartialRefundDays, request.PartialRefundPercentage);
+            eventEntity.UpdateDetails(request.Name, request.EventDate, request.Venue, request.IsClosed, request.MaxTicketsPerUser, request.Category, imageUrl, request.TicketPrice, request.FullRefundDays, request.PartialRefundDays, request.PartialRefundPercentage);
         }
         else
         {
-            eventEntity = new Event(request.Name, request.EventDate, request.Venue, request.MaxTicketsPerUser, request.Category, request.CurrentUserId, imageUrl, request.FullRefundDays, request.PartialRefundDays, request.PartialRefundPercentage);
+            eventEntity = new Event(request.Name, request.EventDate, request.Venue, request.MaxTicketsPerUser, request.Category, request.CurrentUserId, imageUrl, request.TicketPrice, request.FullRefundDays, request.PartialRefundDays, request.PartialRefundPercentage);
             _context.Events.Add(eventEntity);
         }
 

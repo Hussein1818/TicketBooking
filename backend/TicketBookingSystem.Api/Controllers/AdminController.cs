@@ -68,4 +68,11 @@ public class AdminController : ControllerBase
         var userId = await _mediator.Send(command);
         return Ok(new { Message = "Admin created successfully.", UserId = userId });
     }
+    [Authorize(Roles = "Admin")]
+    [HttpGet("users")]
+    public async Task<IActionResult> GetAllUsers()
+    {
+        var users = await _mediator.Send(new TicketBookingSystem.Application.Features.Admin.Queries.GetAllUsersQuery());
+        return Ok(users);
+    }
 }

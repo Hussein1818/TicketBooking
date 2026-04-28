@@ -20,8 +20,9 @@ public class EventDetailsDto
     public int MaxTicketsPerUser { get; set; }
     public string Category { get; set; } = string.Empty;
     public string ImageUrl { get; set; } = string.Empty;
+    public int AttendingCount { get; set; }
 
-    
+
     public int FullRefundDays { get; set; }
     public int PartialRefundDays { get; set; }
     public decimal PartialRefundPercentage { get; set; }
@@ -70,7 +71,7 @@ public class GetEventByIdQueryHandler : IRequestHandler<GetEventByIdQuery, Event
                 PartialRefundPercentage = e.PartialRefundPercentage,
                 OrganizerId = e.OrganizerId,
                 OrganizerName = e.Organizer != null ? e.Organizer.FullName : "Unknown",
-
+                AttendingCount = e.Seats.Count(s => s.Status == SeatStatus.Booked),
 
 
                 TotalSeats = e.Seats.Count(),

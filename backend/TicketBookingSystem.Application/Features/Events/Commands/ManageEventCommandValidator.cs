@@ -40,5 +40,7 @@ public class ManageEventCommandValidator : AbstractValidator<ManageEventCommand>
 
         RuleFor(v => v.PartialRefundDays)
             .GreaterThanOrEqualTo(0).WithMessage("Partial refund days cannot be negative.");
+        RuleFor(v => v.TicketPrice)
+            .GreaterThanOrEqualTo(0).WithMessage("Ticket price cannot be negative.");
     }
 }

@@ -45,7 +45,8 @@ public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, s
         {
             UserName = request.Username,
             Email = request.Email,
-            Role = UserRole.Customer
+            Role = UserRole.Customer,
+            EmailConfirmed = true
         };
 
         var result = await _userManager.CreateAsync(user, request.Password);
