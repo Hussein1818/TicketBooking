@@ -58,4 +58,14 @@ public class Event
         PartialRefundDays = partialRefundDays >= 0 ? partialRefundDays : 3;
         PartialRefundPercentage = partialRefundPercentage >= 0 && partialRefundPercentage <= 100 ? partialRefundPercentage : 50;
     }
+    
+    public void AddSeat(string seatNumber, decimal price)
+    {
+        _seats.Add(new Seat
+        {
+            SeatNumber = seatNumber,
+            Price = price >= 0 ? price : 0,
+            Status = TicketBookingSystem.Domain.Enums.SeatStatus.Available
+        });
+    }
 }

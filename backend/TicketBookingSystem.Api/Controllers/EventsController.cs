@@ -67,15 +67,6 @@ public class EventsController : ControllerBase
         return Ok(new { Message = "Event updated successfully." });
     }
 
-    [Authorize(Roles = "Admin")]
-    [HttpPost("{eventId}/seats")]
-    public async Task<IActionResult> CreateSeats(int eventId, [FromBody] CreateSeatsCommand command)
-    {
-        command.EventId = eventId;
-        var seatsCount = await _mediator.Send(command);
-        return Ok(new { Message = $"Successfully created {seatsCount} seats for Event {eventId}" });
-    }
-
     [HttpGet("{eventId}/seats")]
     public async Task<IActionResult> GetEventSeats(int eventId)
     {
@@ -95,5 +86,23 @@ public class EventsController : ControllerBase
     {
         var analytics = await _mediator.Send(new GetEventAnalyticsQuery { EventId = eventId });
         return Ok(analytics);
+    }
+    [Authorize(Roles = "Admin,Organizer")]
+    [HttpDelete("{eventId}")]
+    public async Task<IActionResult> DeleteEvent(int eventId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized(new { Message = "Invalid Token." });
+
+        var command = new DeleteEventCommand
+        {
+            EventId = eventId,
+            CurrentUserId = userId,
+            IsAdmin = User.IsInRole("Admin")
+        };
+
+        await _mediator.Send(command);
+        return Ok(new { Message = "Event deleted successfully." });
     }
 }

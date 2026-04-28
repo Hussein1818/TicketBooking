@@ -42,5 +42,19 @@ public class ManageEventCommandValidator : AbstractValidator<ManageEventCommand>
             .GreaterThanOrEqualTo(0).WithMessage("Partial refund days cannot be negative.");
         RuleFor(v => v.TicketPrice)
             .GreaterThanOrEqualTo(0).WithMessage("Ticket price cannot be negative.");
+        RuleFor(v => v.RegularSeatsCount)
+            .GreaterThanOrEqualTo(0).WithMessage("Regular seats cannot be negative.");
+
+        RuleFor(v => v.VipSeatsCount)
+            .GreaterThanOrEqualTo(0).WithMessage("VIP seats cannot be negative.");
+
+        RuleFor(v => v.VipTicketPrice)
+            .GreaterThanOrEqualTo(0).WithMessage("VIP ticket price cannot be negative.");
+
+        
+        RuleFor(v => v)
+            .Must(v => v.RegularSeatsCount > 0 || v.VipSeatsCount > 0)
+            .WithMessage("You must create at least one seat (Regular or VIP).")
+            .When(v => v.Id == 0); 
     }
 }

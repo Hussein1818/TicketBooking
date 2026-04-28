@@ -46,10 +46,11 @@ public class GetEventAnalyticsQueryHandler : IRequestHandler<GetEventAnalyticsQu
         var soldSeats = eventEntity.Seats.Where(s => s.Status == SeatStatus.Booked).ToList();
         var ticketsSold = soldSeats.Count;
 
-        
-        var totalNetRevenue = ticketsSold * eventEntity.TicketPrice;
 
         
+        var totalNetRevenue = soldSeats.Sum(s => s.Price);
+
+
         var daysSinceCreation = Math.Max(1, (DateTime.UtcNow - eventEntity.EventDate.AddMonths(-1)).Days);
         var velocityNum = ticketsSold / daysSinceCreation;
         string velocity = $"{velocityNum} tkt / day";
