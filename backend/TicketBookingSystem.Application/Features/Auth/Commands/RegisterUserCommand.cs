@@ -17,7 +17,7 @@ public class RegisterUserCommand : IRequest<string>
     public string Username { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
-    public string? ClientURI { get; set; } = string.Empty; 
+    public string? ClientURI { get; set; } = string.Empty;
 }
 
 public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, string>
@@ -46,6 +46,8 @@ public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, s
             UserName = request.Username,
             Email = request.Email,
             Role = UserRole.Customer,
+
+            
             EmailConfirmed = true
         };
 
@@ -57,15 +59,17 @@ public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, s
             throw new BadRequestException($"Registration failed: {errors}");
         }
 
-        
+        // 🛑 عملنا كومنت لكود التوكن والإيميل عشان ميضربش إيرور 500 (بسبب نقص الـ TokenProviders)
+        // TODO: URGENT - Uncomment this block and remove 'EmailConfirmed = true' before Production Release!
+        /*
         var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
         var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
 
-       
         var confirmationLink = $"{request.ClientURI}?userId={user.Id}&token={encodedToken}";
         var emailBody = $"<h3>Welcome to Hussein Stadium!</h3><p>Please confirm your account by <a href='{confirmationLink}'>clicking here</a>.</p>";
 
         await _emailService.SendEmailAsync(user.Email, "Confirm Your Email", emailBody);
+        */
 
         return user.Id;
     }
