@@ -32,19 +32,19 @@ public class UserTicketDto
 public class GetUserTicketsQueryHandler : IRequestHandler<GetUserTicketsQuery, List<UserTicketDto>>
 {
     private readonly IApplicationDbContext _context;
-    private readonly ICurrentUserService _currentUserService;
     private readonly IConfiguration _configuration;
 
-    public GetUserTicketsQueryHandler(IApplicationDbContext context, ICurrentUserService currentUserService, IConfiguration configuration)
+    
+    public GetUserTicketsQueryHandler(IApplicationDbContext context, IConfiguration configuration)
     {
         _context = context;
-        _currentUserService = currentUserService;
         _configuration = configuration;
     }
 
     public async Task<List<UserTicketDto>> Handle(GetUserTicketsQuery request, CancellationToken cancellationToken)
     {
-        var authenticatedUser = _currentUserService.Username;
+        
+        var authenticatedUser = request.UserId;
         if (string.IsNullOrEmpty(authenticatedUser)) return new List<UserTicketDto>();
 
         var bookings = await _context.Bookings
@@ -55,7 +55,6 @@ public class GetUserTicketsQueryHandler : IRequestHandler<GetUserTicketsQuery, L
             .OrderByDescending(b => b.Id)
             .ToListAsync(cancellationToken);
 
-        // SEC-07: Use a dedicated HMAC key for QR codes, separate from JWT signing key
         var secretKey = _configuration["QrCode:HmacKey"]
             ?? throw new InvalidOperationException("QrCode:HmacKey is not configured.");
         var dtos = new List<UserTicketDto>();
