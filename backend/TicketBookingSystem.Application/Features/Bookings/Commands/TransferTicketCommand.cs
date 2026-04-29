@@ -11,40 +11,48 @@ namespace TicketBookingSystem.Application.Features.Bookings.Commands;
 public class TransferTicketCommand : IRequest<bool>
 {
     public int BookingId { get; set; }
-    public string FromUsername { get; set; } = string.Empty;
-    public string ToUsername { get; set; } = string.Empty;
+    public string FromUserId { get; set; } = string.Empty; 
+    public string ToUsername { get; set; } = string.Empty; 
 }
 
 public class TransferTicketCommandHandler : IRequestHandler<TransferTicketCommand, bool>
 {
     private readonly IApplicationDbContext _context;
-    private readonly ICurrentUserService _currentUserService;
 
-    public TransferTicketCommandHandler(IApplicationDbContext context, ICurrentUserService currentUserService)
+    public TransferTicketCommandHandler(IApplicationDbContext context)
     {
         _context = context;
-        _currentUserService = currentUserService;
     }
 
     public async Task<bool> Handle(TransferTicketCommand request, CancellationToken cancellationToken)
     {
-        var authUser = _currentUserService.Username;
-        if (string.IsNullOrEmpty(authUser) || authUser.ToLower() == request.ToUsername.ToLower())
+        if (string.IsNullOrEmpty(request.FromUserId))
             return false;
 
+       
         var targetUser = await _context.Users.FirstOrDefaultAsync(u => u.UserName == request.ToUsername, cancellationToken);
-        if (targetUser == null || targetUser.Role == UserRole.Admin)
+
+        
+        if (targetUser == null || targetUser.Role == UserRole.Admin || targetUser.Id == request.FromUserId)
             return false;
 
+        
         var booking = await _context.Bookings
             .Include(b => b.Seat)
-            .FirstOrDefaultAsync(b => b.Id == request.BookingId && b.UserId == authUser, cancellationToken);
+            .FirstOrDefaultAsync(b => b.Id == request.BookingId && b.UserId == request.FromUserId, cancellationToken);
 
         if (booking == null || booking.Seat.Status != SeatStatus.Booked)
             return false;
 
-        booking.UserId = request.ToUsername;
-        _context.AuditLogs.Add(new AuditLog { Username = authUser, Action = "Ticket Transfer", Details = $"Transferred booking {request.BookingId} to {request.ToUsername}." });
+        
+        booking.UserId = targetUser.Id;
+
+       
+        var fromUser = await _context.Users.FindAsync(new object[] { request.FromUserId }, cancellationToken);
+        string fromUsername = fromUser?.UserName ?? request.FromUserId;
+
+        _context.AuditLogs.Add(new AuditLog { Username = fromUsername, Action = "Ticket Transfer", Details = $"Transferred booking {request.BookingId} to target user: {targetUser.UserName}." });
+
         await _context.SaveChangesAsync(cancellationToken);
 
         return true;

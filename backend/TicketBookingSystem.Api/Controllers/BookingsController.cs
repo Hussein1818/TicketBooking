@@ -108,6 +108,7 @@ public class BookingsController : ControllerBase
 
     [Authorize]
     [HttpGet("my-tickets")]
+    [ProducesResponseType(typeof(List<UserTicketDto>), 200)] 
     public async Task<IActionResult> GetMyTickets()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
@@ -132,13 +133,15 @@ public class BookingsController : ControllerBase
     [HttpPost("transfer")]
     public async Task<IActionResult> TransferTicket([FromBody] TicketBookingSystem.Application.Features.Bookings.Commands.TransferTicketCommand command)
     {
-        command.FromUsername = User.Identity?.Name ?? command.FromUsername;
+       
+        command.FromUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+
         var success = await _mediator.Send(command);
 
         if (!success)
-            return BadRequest(new { Message = "Transfer failed. Please check the target username." });
+            return BadRequest(new { Message = "Transfer failed. Please check the target username or ticket ownership." });
 
-        return Ok(new { Message = "Ticket transferred successfully!" });
+        return Ok(new { Message = "Ticket transferred successfully! 🎉" });
     }
 
     [Authorize]
