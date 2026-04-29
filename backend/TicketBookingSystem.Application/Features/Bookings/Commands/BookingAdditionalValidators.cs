@@ -18,11 +18,9 @@ public class TransferTicketCommandValidator : AbstractValidator<TransferTicketCo
         RuleFor(v => v.BookingId)
             .GreaterThan(0).WithMessage("Booking ID must be greater than 0.");
 
-        RuleFor(v => v.FromUsername)
-            .NotEmpty().WithMessage("From Username is required.");
+        
 
         RuleFor(v => v.ToUsername)
-            .NotEmpty().WithMessage("To Username is required.")
-            .NotEqual(v => v.FromUsername).WithMessage("Cannot transfer ticket to yourself.");
+            .NotEmpty().WithMessage("To Username is required.");
     }
 }
