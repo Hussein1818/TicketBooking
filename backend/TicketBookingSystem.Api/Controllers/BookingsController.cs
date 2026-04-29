@@ -6,6 +6,7 @@ using TicketBookingSystem.Application.Features.Bookings.Commands;
 using TicketBookingSystem.Application.Features.Bookings.Queries;
 using TicketBookingSystem.Application.Features.Orders.Commands;
 using TicketBookingSystem.Application.Features.Wallet;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace TicketBookingSystem.Api.Controllers;
@@ -26,6 +27,10 @@ public class BookingsController : ControllerBase
     [EnableRateLimiting("BookingPolicy")]
     public async Task<IActionResult> BookSeat([FromBody] BookSeatCommand command)
     {
+        
+        command.UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        if (string.IsNullOrEmpty(command.UserId)) return Unauthorized();
+
         var bookingId = await _mediator.Send(command);
         return Ok(new { Message = "Seat locked successfully! Added to cart.", BookingId = bookingId });
     }
@@ -34,7 +39,7 @@ public class BookingsController : ControllerBase
     [HttpPost("checkout-paymob")]
     public async Task<IActionResult> CheckoutCart([FromBody] CheckoutCartCommand command)
     {
-        command.UserId = User.Identity?.Name ?? string.Empty;
+        command.UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
         var paymentUrl = await _mediator.Send(command);
 
         if (string.IsNullOrEmpty(paymentUrl))
@@ -59,7 +64,6 @@ public class BookingsController : ControllerBase
     [HttpGet("callback")]
     public IActionResult PaymentCallback([FromQuery] bool success, [FromQuery] int merchant_order_id)
     {
-        // HTML-encode all outputs to prevent XSS injection
         string statusText = success ? "Payment Successful! 🎉" : "Payment Failed ❌";
         string color = success ? "green" : "red";
         string safeOrderId = System.Net.WebUtility.HtmlEncode(merchant_order_id.ToString());
@@ -92,10 +96,10 @@ public class BookingsController : ControllerBase
     {
         command.ScannedByUsername = User.Identity?.Name ?? string.Empty;
         var result = await _mediator.Send(command);
-        
+
         if (result.Status == "Invalid")
             return BadRequest(result);
-            
+
         if (result.Status == "Already Used")
             return Conflict(result);
 
@@ -106,7 +110,7 @@ public class BookingsController : ControllerBase
     [HttpGet("my-tickets")]
     public async Task<IActionResult> GetMyTickets()
     {
-        var userId = User.Identity?.Name ?? string.Empty;
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
         var tickets = await _mediator.Send(new GetUserTicketsQuery { UserId = userId });
         return Ok(tickets);
     }
@@ -115,7 +119,7 @@ public class BookingsController : ControllerBase
     [HttpDelete("cancel/{bookingId}")]
     public async Task<IActionResult> CancelBooking(int bookingId)
     {
-        var userId = User.Identity?.Name ?? string.Empty;
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
         var success = await _mediator.Send(new CancelBookingCommand { BookingId = bookingId, UserId = userId });
 
         if (!success)
@@ -136,12 +140,12 @@ public class BookingsController : ControllerBase
 
         return Ok(new { Message = "Ticket transferred successfully!" });
     }
+
     [Authorize]
     [HttpPost("checkout-mock")]
     public async Task<IActionResult> MockCheckout()
     {
-        
-        var userId = User.Identity?.Name ?? string.Empty;
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
         var command = new TicketBookingSystem.Application.Features.Bookings.Commands.MockCheckoutCommand { UserId = userId };
 
         var success = await _mediator.Send(command);

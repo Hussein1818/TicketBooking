@@ -23,27 +23,27 @@ public class BookSeatCommandHandler : IRequestHandler<BookSeatCommand, int>
 {
     private readonly IApplicationDbContext _context;
     private readonly ITicketHubService _hubService;
-    private readonly ICurrentUserService _currentUserService;
     private readonly IJobService _jobService;
     private readonly IDistributedCache _cache;
 
+    
     public BookSeatCommandHandler(
         IApplicationDbContext context,
         ITicketHubService hubService,
-        ICurrentUserService currentUserService,
         IJobService jobService,
         IDistributedCache cache)
     {
         _context = context;
         _hubService = hubService;
-        _currentUserService = currentUserService;
         _jobService = jobService;
         _cache = cache;
     }
 
     public async Task<int> Handle(BookSeatCommand request, CancellationToken cancellationToken)
     {
-        var currentUserId = _currentUserService.Username;
+       
+        var currentUserId = request.UserId;
+
         if (string.IsNullOrEmpty(currentUserId))
             throw new UnauthorizedAccessException("User not authenticated.");
 
@@ -51,8 +51,7 @@ public class BookSeatCommandHandler : IRequestHandler<BookSeatCommand, int>
             .Include(s => s.Event)
             .FirstOrDefaultAsync(s => s.Id == request.SeatId, cancellationToken);
 
-        if (seat == null)
-            throw new NotFoundException(nameof(Seat), request.SeatId);
+        if (seat == null) throw new NotFoundException(nameof(Seat), request.SeatId);
 
         if (seat.Event.IsClosed || seat.Event.EventDate <= DateTime.UtcNow)
             throw new BadRequestException("Event is closed or already past.");
@@ -78,7 +77,7 @@ public class BookSeatCommandHandler : IRequestHandler<BookSeatCommand, int>
         var booking = new Booking
         {
             SeatId = seat.Id,
-            UserId = currentUserId,
+            UserId = currentUserId, 
             BookingDate = DateTime.UtcNow,
             AmountPaid = 0,
             JobId = jobId
@@ -92,9 +91,6 @@ public class BookSeatCommandHandler : IRequestHandler<BookSeatCommand, int>
         }
         catch (DbUpdateConcurrencyException)
         {
-            // EDGE-01 FIX: Cancel the Hangfire job that was already scheduled
-            // before the save failed — otherwise it becomes an orphaned job that
-            // could release a seat legitimately locked by a different user.
             _jobService.CancelJob(jobId);
             throw new ConflictException("This seat was just booked by someone else. Please choose another seat.");
         }
