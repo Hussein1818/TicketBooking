@@ -136,4 +136,19 @@ public class BookingsController : ControllerBase
 
         return Ok(new { Message = "Ticket transferred successfully!" });
     }
+    [Authorize]
+    [HttpPost("checkout-mock")]
+    public async Task<IActionResult> MockCheckout()
+    {
+        
+        var userId = User.Identity?.Name ?? string.Empty;
+        var command = new TicketBookingSystem.Application.Features.Bookings.Commands.MockCheckoutCommand { UserId = userId };
+
+        var success = await _mediator.Send(command);
+
+        if (!success)
+            return BadRequest(new { Message = "Your cart is empty or seats expired." });
+
+        return Ok(new { Message = "Mock payment successful! Tickets are now confirmed and QR codes generated." });
+    }
 }
