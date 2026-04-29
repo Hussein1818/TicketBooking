@@ -44,7 +44,7 @@ public class MockCheckoutCommandHandler : IRequestHandler<MockCheckoutCommand, b
 
         if (!bookings.Any()) return false;
 
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.UserName == request.UserId, cancellationToken);
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
         if (user == null) return false;
 
         
