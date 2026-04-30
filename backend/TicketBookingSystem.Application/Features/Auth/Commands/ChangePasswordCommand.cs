@@ -10,7 +10,7 @@ namespace TicketBookingSystem.Application.Features.Auth.Commands;
 
 public class ChangePasswordCommand : IRequest<bool>
 {
-    public string Username { get; set; } = string.Empty;
+    public string UserId { get; set; } = string.Empty;
     public string CurrentPassword { get; set; } = string.Empty;
     public string NewPassword { get; set; } = string.Empty;
 }
@@ -26,9 +26,9 @@ public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordComman
 
     public async Task<bool> Handle(ChangePasswordCommand request, CancellationToken cancellationToken)
     {
-        var user = await _userManager.FindByNameAsync(request.Username);
-        if (user == null)
-            throw new NotFoundException(nameof(User), request.Username);
+        var user = await _userManager.FindByIdAsync(request.UserId);
+        if (user == null)   
+            throw new NotFoundException(nameof(User), request.UserId);
 
         var result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
         if (!result.Succeeded)

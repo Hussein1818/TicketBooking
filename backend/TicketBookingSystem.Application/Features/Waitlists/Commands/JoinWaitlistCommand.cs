@@ -30,8 +30,9 @@ public class JoinWaitlistCommandHandler : IRequestHandler<JoinWaitlistCommand, b
 
         if (exists) return false;
 
+        
         var userEmail = await _context.Users
-            .Where(u => u.UserName == request.UserId)
+            .Where(u => u.Id == request.UserId)
             .Select(u => u.Email)
             .FirstOrDefaultAsync(cancellationToken);
 

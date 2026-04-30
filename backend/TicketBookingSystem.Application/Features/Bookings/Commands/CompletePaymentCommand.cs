@@ -114,7 +114,9 @@ public class CompletePaymentCommandHandler : IRequestHandler<CompletePaymentComm
                 var emailBody = _emailTemplateService.GetPaymentSuccessEmailTemplate(
                     order.UserId,
                     booking.Seat.SeatNumber,
-                    booking.AmountPaid);
+                 
+                    booking.AmountPaid,
+                    booking.Seat.Event.Name);
 
                 byte[] ticketPdfBytes = await _ticketPdfService.GenerateTicketPdfAsync(
                     eventName: booking.Seat.Event.Name,
@@ -123,13 +125,14 @@ public class CompletePaymentCommandHandler : IRequestHandler<CompletePaymentComm
                     seatNumber: booking.Seat.SeatNumber,
                     username: order.UserId,
                     seatId: booking.SeatId
+
                 );
 
                 try
                 {
                     await _emailService.SendEmailWithAttachmentAsync(
                         userEmail,
-                        $"Hussein Stadium - Official Ticket (Seat {booking.Seat.SeatNumber})",
+                        $"Your Official Ticket (Seat {booking.Seat.SeatNumber})",
                         emailBody,
                         ticketPdfBytes,
                         $"Ticket_{booking.Seat.SeatNumber}.pdf");

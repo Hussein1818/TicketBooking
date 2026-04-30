@@ -6,8 +6,7 @@ public class SubscribeCommandValidator : AbstractValidator<SubscribeCommand>
 {
     public SubscribeCommandValidator()
     {
-        RuleFor(v => v.Username)
-            .NotEmpty().WithMessage("Username is required.");
+        
 
         RuleFor(v => v.Tier)
             .IsInEnum().WithMessage("Invalid subscription tier.")

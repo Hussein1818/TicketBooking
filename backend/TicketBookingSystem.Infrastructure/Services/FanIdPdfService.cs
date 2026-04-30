@@ -56,8 +56,9 @@ public class FanIdPdfService : IFanIdPdfService
 
                 page.Content().Column(column =>
                 {
+                   
                     column.Item().Background(Colors.Blue.Darken2).Padding(10).AlignCenter()
-                          .Text("HUSSEIN STADIUM - FAN ID").FontSize(14).Bold().FontColor(Colors.White);
+                          .Text("OFFICIAL FAN ID").FontSize(14).Bold().FontColor(Colors.White);
 
                     column.Item().PaddingVertical(10).LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
 

@@ -14,7 +14,7 @@ namespace TicketBookingSystem.Application.Features.Reviews;
 public class AddReviewCommand : IRequest<bool>
 {
     public int EventId { get; set; }
-    public string Username { get; set; } = string.Empty;
+    public string UserId { get; set; } = string.Empty;
     public int Rating { get; set; }
     public string Comment { get; set; } = string.Empty;
 }
@@ -22,33 +22,35 @@ public class AddReviewCommand : IRequest<bool>
 public class AddReviewHandler : IRequestHandler<AddReviewCommand, bool>
 {
     private readonly IApplicationDbContext _context;
-    private readonly ICurrentUserService _currentUserService;
 
-    public AddReviewHandler(IApplicationDbContext context, ICurrentUserService currentUserService)
+    
+    public AddReviewHandler(IApplicationDbContext context)
     {
         _context = context;
-        _currentUserService = currentUserService;
     }
 
     public async Task<bool> Handle(AddReviewCommand request, CancellationToken ct)
     {
-        var authUser = _currentUserService.Username;
-        if (string.IsNullOrEmpty(authUser)) return false;
+        if (string.IsNullOrEmpty(request.UserId)) return false;
 
-        // PERF: No Include() needed — EF Core translates navigation properties
-        // in the WHERE clause into SQL JOINs without materializing entities.
+        
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == request.UserId, ct);
+        if (user == null) return false;
+
+        
         var hasAttended = await _context.Bookings
             .AnyAsync(b => b.Seat.EventId == request.EventId
-                        && b.UserId == authUser
+                        && b.UserId == request.UserId
                         && b.Seat.Status == SeatStatus.Booked
                         && b.Seat.Event.EventDate < DateTime.UtcNow, ct);
 
         if (!hasAttended) return false;
 
+        
         var review = new Review
         {
             EventId = request.EventId,
-            Username = authUser,
+            Username = user.UserName!, 
             Rating = request.Rating,
             Comment = request.Comment,
             CreatedAt = DateTime.UtcNow
@@ -59,16 +61,17 @@ public class AddReviewHandler : IRequestHandler<AddReviewCommand, bool>
         
         var startOfMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
         var reviewsThisMonth = await _context.Reviews
-            .CountAsync(r => r.Username == authUser && r.CreatedAt >= startOfMonth, ct);
+            .CountAsync(r => r.Username == user.UserName && r.CreatedAt >= startOfMonth, ct);
 
         if (reviewsThisMonth < 3)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserName == authUser, ct);
-            if (user != null)
+            user.AddLoyaltyPoints(50);
+            _context.AuditLogs.Add(new AuditLog
             {
-                user.AddLoyaltyPoints(50); 
-                _context.AuditLogs.Add(new AuditLog { Username = authUser, Action = "Loyalty Points", Details = "Earned 50 points from reviewing." });
-            }
+                Username = user.UserName!,
+                Action = "Loyalty Points",
+                Details = "Earned 50 points from reviewing."
+            });
         }
 
         await _context.SaveChangesAsync(ct);

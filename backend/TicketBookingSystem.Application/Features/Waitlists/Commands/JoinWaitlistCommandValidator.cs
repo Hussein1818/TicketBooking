@@ -9,7 +9,6 @@ public class JoinWaitlistCommandValidator : AbstractValidator<JoinWaitlistComman
         RuleFor(v => v.EventId)
             .GreaterThan(0).WithMessage("Event ID must be greater than 0.");
 
-        RuleFor(v => v.UserId)
-            .NotEmpty().WithMessage("User ID is required.");
+        
     }
 }

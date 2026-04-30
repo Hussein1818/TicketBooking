@@ -1,8 +1,9 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using TicketBookingSystem.Application.Features.Reviews;
+using System.Security.Claims;
 using System.Threading.Tasks;
+using TicketBookingSystem.Application.Features.Reviews;
 
 namespace TicketBookingSystem.Api.Controllers;
 
@@ -24,16 +25,13 @@ public class ReviewsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> AddReview([FromBody] AddReviewCommand command)
     {
-        command.Username = User.Identity?.Name ?? command.Username;
+        command.UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty; // 💡 سحبنا الـ GUID
 
         if (command.Rating < 1 || command.Rating > 5)
             return BadRequest(new { Message = "Rating must be between 1 and 5." });
 
         var success = await _mediator.Send(command);
-
-        if (!success)
-            return BadRequest(new { Message = "You can only review events you have attended and are already closed." });
-
+        if (!success) return BadRequest(new { Message = "You can only review events you have attended and are already closed." });
         return Ok(new { Message = "Review added successfully! ⭐" });
     }
 }

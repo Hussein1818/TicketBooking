@@ -29,7 +29,7 @@ public class ChangePasswordCommandValidator : AbstractValidator<ChangePasswordCo
 {
     public ChangePasswordCommandValidator()
     {
-        RuleFor(v => v.Username).NotEmpty().WithMessage("Username is required.");
+        RuleFor(v => v.UserId).NotEmpty().WithMessage("Username is required.");
         RuleFor(v => v.CurrentPassword).NotEmpty().WithMessage("Current password is required.");
         RuleFor(v => v.NewPassword)
             .NotEmpty().WithMessage("New password is required.")
@@ -79,6 +79,6 @@ public class RevokeTokenCommandValidator : AbstractValidator<RevokeTokenCommand>
 {
     public RevokeTokenCommandValidator()
     {
-        RuleFor(v => v.Username).NotEmpty().WithMessage("Username is required.");
+        RuleFor(v => v.UserId).NotEmpty().WithMessage("Username is required.");
     }
 }

@@ -1,6 +1,7 @@
-using MediatR;
+﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using TicketBookingSystem.Application.Features.Auth.Commands;
 using TicketBookingSystem.Application.Features.Auth.Queries;
@@ -63,8 +64,10 @@ public class AuthController : ControllerBase
     [HttpPost("revoke-token")]
     public async Task<IActionResult> RevokeToken()
     {
-        var username = User.Identity?.Name ?? string.Empty;
-        await _mediator.Send(new RevokeTokenCommand { Username = username });
+        var userId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier) ?? string.Empty;
+
+        
+        await _mediator.Send(new RevokeTokenCommand { UserId = userId });
         return Ok(new { Message = "Token revoked successfully." });
     }
 
@@ -72,8 +75,8 @@ public class AuthController : ControllerBase
     [HttpPost("change-password")]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordCommand command)
     {
-        //  Always use the authenticated user's identity, never trust the request body
-        command.Username = User.Identity?.Name ?? string.Empty;
+        
+        command.UserId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier) ?? string.Empty;
 
         var success = await _mediator.Send(command);
         if (!success)
@@ -82,7 +85,7 @@ public class AuthController : ControllerBase
         return Ok(new { Message = "Password updated successfully." });
     }
 
-    
+
     [HttpPost("forgot-password")]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordCommand command)
     {

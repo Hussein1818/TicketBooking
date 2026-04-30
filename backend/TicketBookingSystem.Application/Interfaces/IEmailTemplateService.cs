@@ -2,5 +2,6 @@
 
 public interface IEmailTemplateService
 {
-    string GetPaymentSuccessEmailTemplate(string username, string seatNumber, decimal amountPaid);
+    
+    string GetPaymentSuccessEmailTemplate(string username, string seatNumber, decimal amountPaid, string eventName);
 }

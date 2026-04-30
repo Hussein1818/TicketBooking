@@ -1,6 +1,7 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using TicketBookingSystem.Application.Features.Notifications;
 
@@ -21,7 +22,8 @@ public class NotificationsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetMyNotifications()
     {
-        var userId = User.Identity?.Name ?? string.Empty;
+       
+        var userId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier) ?? string.Empty;
         var notifications = await _mediator.Send(new GetMyNotificationsQuery { UserId = userId });
         return Ok(notifications);
     }
@@ -29,7 +31,8 @@ public class NotificationsController : ControllerBase
     [HttpPut("{id}/read")]
     public async Task<IActionResult> MarkAsRead(int id)
     {
-        var userId = User.Identity?.Name ?? string.Empty;
+       
+        var userId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier) ?? string.Empty;
         var success = await _mediator.Send(new MarkNotificationAsReadCommand { NotificationId = id, UserId = userId });
 
         if (!success)

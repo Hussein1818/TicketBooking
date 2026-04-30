@@ -51,14 +51,15 @@ public class TicketPdfService : ITicketPdfService
                 {
                     row.RelativeItem(2).Background(Colors.Grey.Lighten4).Padding(20).Column(column =>
                     {
-                        column.Item().Text("HUSSEIN STADIUM TICKET").FontSize(24).Bold().FontColor(Colors.Blue.Darken2);
+                        
+                        column.Item().Text($"{venue.ToUpper()} TICKET").FontSize(24).Bold().FontColor(Colors.Blue.Darken2);
                         column.Item().PaddingVertical(10).LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
 
                         column.Item().Text("Event:").SemiBold().FontColor(Colors.Grey.Darken2);
                         column.Item().PaddingBottom(10).Text(eventName).FontSize(18).Bold();
 
-                        column.Item().Text("Venue & Date:").SemiBold().FontColor(Colors.Grey.Darken2);
-                        column.Item().PaddingBottom(10).Text($"{venue} | {date}");
+                        column.Item().Text("Date:").SemiBold().FontColor(Colors.Grey.Darken2); 
+                        column.Item().PaddingBottom(10).Text($"{date}");
 
                         column.Item().Text("Attendee:").SemiBold().FontColor(Colors.Grey.Darken2);
                         column.Item().PaddingBottom(10).Text(username);

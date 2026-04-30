@@ -10,7 +10,7 @@ namespace TicketBookingSystem.Application.Features.Subscriptions.Commands;
 
 public class SubscribeCommand : IRequest<bool>
 {
-    public string Username { get; set; } = string.Empty;
+    public string UserId { get; set; } = string.Empty;
     public SubscriptionTier Tier { get; set; }
     public int Months { get; set; } = 1;
 }
@@ -26,7 +26,7 @@ public class SubscribeCommandHandler : IRequestHandler<SubscribeCommand, bool>
 
     public async Task<bool> Handle(SubscribeCommand request, CancellationToken cancellationToken)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.UserName == request.Username, cancellationToken);
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
         if (user == null) return false;
 
         if (request.Tier == SubscriptionTier.None || request.Months <= 0) return false;
@@ -48,7 +48,7 @@ public class SubscribeCommandHandler : IRequestHandler<SubscribeCommand, bool>
 
         _context.AuditLogs.Add(new Domain.Entities.AuditLog
         {
-            Username = request.Username,
+            Username = user.UserName,
             Action = "Subscription Upgrade",
             Details = $"Upgraded to {request.Tier} for {request.Months} months."
         });
