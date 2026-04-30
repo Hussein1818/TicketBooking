@@ -44,15 +44,15 @@ builder.Services.AddCors(options =>
     {
         if (builder.Environment.IsDevelopment() && allowedOrigins.Length == 0)
         {
-            // Development fallback: allow localhost origins
-            policy.SetIsOriginAllowed(origin =>
-                    new Uri(origin).Host == "localhost")
+            
+            policy.SetIsOriginAllowed(origin => new Uri(origin).Host == "localhost")
                   .AllowAnyMethod()
                   .AllowAnyHeader()
                   .AllowCredentials();
         }
         else
         {
+            
             policy.WithOrigins(allowedOrigins)
                   .AllowAnyMethod()
                   .AllowAnyHeader()
@@ -196,7 +196,7 @@ app.UseOpenApi();
 app.UseSwaggerUi();
 
 app.UseHttpsRedirection();
-app.UseCors("AllowFrontend");
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseHangfireDashboard("/hangfire", new DashboardOptions

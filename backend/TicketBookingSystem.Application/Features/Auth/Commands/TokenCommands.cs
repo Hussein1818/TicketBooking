@@ -31,9 +31,11 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, A
     public async Task<AuthResponseDto> Handle(RefreshTokenCommand request, CancellationToken cancellationToken)
     {
         var principal = _tokenService.GetPrincipalFromExpiredToken(request.AccessToken);
-        var username = principal.Identity?.Name;
+        
+        var userId = principal.FindFirstValue(ClaimTypes.NameIdentifier) ?? principal.Identity?.Name;
 
-        var user = await _userManager.FindByNameAsync(username ?? string.Empty);
+        
+        var user = await _userManager.FindByIdAsync(userId ?? string.Empty);
 
         if (user == null || user.RefreshToken != request.RefreshToken || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
         {
@@ -56,7 +58,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, A
 
 public class RevokeTokenCommand : IRequest<bool>
 {
-    public string Username { get; set; } = string.Empty;
+    public string UserId { get; set; } = string.Empty;
 }
 
 public class RevokeTokenCommandHandler : IRequestHandler<RevokeTokenCommand, bool>
@@ -70,7 +72,8 @@ public class RevokeTokenCommandHandler : IRequestHandler<RevokeTokenCommand, boo
 
     public async Task<bool> Handle(RevokeTokenCommand request, CancellationToken cancellationToken)
     {
-        var user = await _userManager.FindByNameAsync(request.Username);
+        
+        var user = await _userManager.FindByIdAsync(request.UserId);
         if (user == null) return false;
 
         user.RefreshToken = null;

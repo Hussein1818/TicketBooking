@@ -6,8 +6,7 @@ public class TransferFundsCommandValidator : AbstractValidator<TransferFundsComm
 {
     public TransferFundsCommandValidator()
     {
-        RuleFor(v => v.FromUsername)
-            .NotEmpty().WithMessage("Sender username is required.");
+        
 
         RuleFor(v => v.ToUsername)
             .NotEmpty().WithMessage("Receiver username is required.")

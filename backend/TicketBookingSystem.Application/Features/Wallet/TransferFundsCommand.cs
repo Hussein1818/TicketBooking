@@ -11,7 +11,7 @@ namespace TicketBookingSystem.Application.Features.Wallet;
 
 public class TransferFundsCommand : IRequest<bool>
 {
-    public string FromUsername { get; set; } = string.Empty;
+    public string FromUserId { get; set; } = string.Empty;
     public string ToUsername { get; set; } = string.Empty;
     public decimal Amount { get; set; }
 }
@@ -28,11 +28,11 @@ public class TransferFundsCommandHandler : IRequestHandler<TransferFundsCommand,
     public async Task<bool> Handle(TransferFundsCommand request, CancellationToken ct)
     {
         // 1. Business Validation
-        if (request.FromUsername.Equals(request.ToUsername, StringComparison.OrdinalIgnoreCase))
+        if (request.FromUserId.Equals(request.ToUsername, StringComparison.OrdinalIgnoreCase))
             throw new BadRequestException("Cannot transfer funds to your own account.");
 
         // 2. Fetch Users
-        var sender = await _context.Users.FirstOrDefaultAsync(u => u.UserName == request.FromUsername, ct);
+        var sender = await _context.Users.FirstOrDefaultAsync(u => u.Id == request.FromUserId, ct);
         if (sender == null) return false;
 
         var receiver = await _context.Users.FirstOrDefaultAsync(u => u.UserName == request.ToUsername, ct);

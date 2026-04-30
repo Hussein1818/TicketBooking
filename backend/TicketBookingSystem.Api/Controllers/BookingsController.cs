@@ -52,7 +52,8 @@ public class BookingsController : ControllerBase
     [HttpPost("checkout-wallet")]
     public async Task<IActionResult> PayCartWithWallet([FromBody] PayWithWalletCommand command)
     {
-        command.Username = User.Identity?.Name ?? string.Empty;
+        
+        command.UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
         var success = await _mediator.Send(command);
 
         if (!success)

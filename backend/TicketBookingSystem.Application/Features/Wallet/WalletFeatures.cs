@@ -14,7 +14,7 @@ namespace TicketBookingSystem.Application.Features.Wallet;
 
 public class GetWalletBalanceQuery : IRequest<decimal>
 {
-    public string Username { get; set; } = string.Empty;
+    public string UserId { get; set; } = string.Empty;  
 }
 
 public class GetWalletBalanceHandler : IRequestHandler<GetWalletBalanceQuery, decimal>
@@ -28,14 +28,14 @@ public class GetWalletBalanceHandler : IRequestHandler<GetWalletBalanceQuery, de
 
     public async Task<decimal> Handle(GetWalletBalanceQuery request, CancellationToken ct)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.UserName == request.Username, ct);
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == request.UserId, ct);
         return user?.WalletBalance ?? 0;
     }
 }
 
 public class AddFundsCommand : IRequest<decimal>
 {
-    public string Username { get; set; } = string.Empty;
+    public string UserId { get; set; } = string.Empty;
     public decimal Amount { get; set; }
 }
 
@@ -50,10 +50,10 @@ public class AddFundsHandler : IRequestHandler<AddFundsCommand, decimal>
 
     public async Task<decimal> Handle(AddFundsCommand request, CancellationToken ct)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.UserName == request.Username, ct);
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == request.UserId, ct);
 
         if (user == null)
-            throw new NotFoundException(nameof(Domain.Entities.User), request.Username);
+            throw new NotFoundException(nameof(Domain.Entities.User), request.UserId);
 
         user.AddFunds(request.Amount);
 
@@ -73,7 +73,7 @@ public class AddFundsHandler : IRequestHandler<AddFundsCommand, decimal>
 public class PayWithWalletCommand : IRequest<bool>
 {
     public List<int> BookingIds { get; set; } = new();
-    public string Username { get; set; } = string.Empty;
+    public string UserId { get; set; } = string.Empty;
     public string? PromoCode { get; set; }
 }
 
@@ -97,11 +97,11 @@ public class PayWithWalletHandler : IRequestHandler<PayWithWalletCommand, bool>
         if (!request.BookingIds.Any())
             return false;
 
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.UserName == request.Username, ct);
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == request.UserId, ct);
 
         var bookings = await _context.Bookings
             .Include(b => b.Seat)
-            .Where(b => request.BookingIds.Contains(b.Id) && b.UserId == request.Username && b.Seat.Status == SeatStatus.Locked)
+            .Where(b => request.BookingIds.Contains(b.Id) && b.UserId == request.UserId && b.Seat.Status == SeatStatus.Locked)
             .ToListAsync(ct);
 
         if (user == null || bookings.Count != request.BookingIds.Count)
@@ -119,7 +119,7 @@ public class PayWithWalletHandler : IRequestHandler<PayWithWalletCommand, bool>
         // Give 1 loyalty point for every 10 EGP spent
         int pointsToAward = (int)(pricing.FinalPriceEgp / 10);
         user.AddLoyaltyPoints(pointsToAward);
-        _context.AuditLogs.Add(new AuditLog { Username = request.Username, Action = "Loyalty Points",
+        _context.AuditLogs.Add(new AuditLog { Username = request.UserId, Action = "Loyalty Points",
             Details = $"Earned {pointsToAward} points from wallet purchase." });
 
         foreach (var booking in bookings)
@@ -142,7 +142,7 @@ public class PayWithWalletHandler : IRequestHandler<PayWithWalletCommand, bool>
 
         _context.AuditLogs.Add(new AuditLog
         {
-            Username = request.Username,
+            Username = request.UserId,
             Action = "Cart Purchase",
             Details = $"Bought {bookings.Count} seats with wallet."
         });

@@ -36,13 +36,16 @@ public class EmailService : IEmailService
         await SendMailAsync(mailMessage);
     }
 
-    
+
     private MailMessage CreateMailMessage(string toEmail, string subject, string body)
     {
         var senderEmail = _config["EmailSettings:SenderEmail"];
+        
+        var senderName = _config["EmailSettings:SenderName"] ?? "Ticket Booking System";
+
         var mailMessage = new MailMessage
         {
-            From = new MailAddress(senderEmail!, "Hussein Stadium Tickets"),
+            From = new MailAddress(senderEmail!, senderName),
             Subject = subject,
             Body = body,
             IsBodyHtml = true,
@@ -51,7 +54,7 @@ public class EmailService : IEmailService
         return mailMessage;
     }
 
-    
+
     private async Task SendMailAsync(MailMessage mailMessage)
     {
         var smtpServer = _config["EmailSettings:SmtpServer"];

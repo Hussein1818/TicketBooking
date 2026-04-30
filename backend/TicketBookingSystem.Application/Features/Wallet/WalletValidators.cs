@@ -11,9 +11,7 @@ public class AddFundsCommandValidator : AbstractValidator<AddFundsCommand>
 {
     public AddFundsCommandValidator()
     {
-        RuleFor(v => v.Username)
-            .NotEmpty().WithMessage("Username is required.")
-            .MaximumLength(50).WithMessage("Username must not exceed 50 characters.");
+      
 
         RuleFor(v => v.Amount)
             .GreaterThan(0).WithMessage("Amount must be greater than 0.")
@@ -35,9 +33,7 @@ public class PayWithWalletCommandValidator : AbstractValidator<PayWithWalletComm
             .Must(ids => ids.All(id => id > 0)).WithMessage("All booking IDs must be greater than 0.")
             .Must(ids => ids.Distinct().Count() == ids.Count).WithMessage("Duplicate booking IDs are not allowed.");
 
-        RuleFor(v => v.Username)
-            .NotEmpty().WithMessage("Username is required.")
-            .MaximumLength(50).WithMessage("Username must not exceed 50 characters.");
+        
 
         RuleFor(v => v.PromoCode)
             .MaximumLength(30).WithMessage("Promo code must not exceed 30 characters.")

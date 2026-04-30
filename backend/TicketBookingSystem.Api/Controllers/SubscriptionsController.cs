@@ -1,6 +1,7 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using TicketBookingSystem.Application.Features.Subscriptions.Commands;
 
@@ -21,7 +22,8 @@ public class SubscriptionsController : ControllerBase
     [HttpPost("upgrade")]
     public async Task<IActionResult> UpgradeSubscription([FromBody] SubscribeCommand command)
     {
-        command.Username = User.Identity?.Name ?? string.Empty;
+        
+        command.UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
 
         var success = await _mediator.Send(command);
 
