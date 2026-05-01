@@ -3,6 +3,9 @@ name: Auto Deploy to MonsterASP
 on:
   push:
     branches: [ main ]
+  
+    paths:
+      - 'backend/**'
 
 jobs:
   build-and-deploy:
