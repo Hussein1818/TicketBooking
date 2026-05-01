@@ -73,8 +73,12 @@ public class UsersController : ControllerBase
         var query = new GetFanIdPdfQuery { UserId = userId };
         var pdfBytes = await _mediator.Send(query);
 
+        if (pdfBytes == null || pdfBytes.Length == 0)
+            return BadRequest(new { Message = "Fan ID not found. Please complete your profile first to generate it." });
+
         return File(pdfBytes, "application/pdf", $"FanID_{userId}.pdf");
     }
+
     [HttpGet("profile")]
     public async Task<IActionResult> GetProfile()
     {
