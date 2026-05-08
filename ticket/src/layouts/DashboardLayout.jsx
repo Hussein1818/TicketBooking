@@ -43,7 +43,7 @@ export default function DashboardLayout({ children }) {
         setExpanded={setSidebarExpanded}
       />
 
-      <div className={`flex flex-1 flex-col overflow-hidden bg-[#111214] ml-0 ${sidebarExpanded ? 'md:ml-[280px]' : 'md:ml-[84px]'} transition-all duration-300`}>
+      <div className={`flex flex-1 flex-col overflow-hidden bg-[#111214] ml-0 md:ml-[84px] transition-all duration-300`}>
         {/* Top Header */}
         <header className="flex h-[80px] items-center justify-between md:justify-end px-4 md:px-8 border-b border-white/5 bg-[#111214]">
           <button
@@ -79,7 +79,7 @@ export default function DashboardLayout({ children }) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto px-4 md:px-8 py-6 md:py-10 custom-scrollbar relative">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-8 py-6 md:py-10 custom-scrollbar relative">
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}

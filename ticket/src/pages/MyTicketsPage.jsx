@@ -2,6 +2,7 @@ import { Shield, Send, Calendar, Loader2, XCircle, CheckCircle2, Download } from
 import DashboardLayout from "../layouts/DashboardLayout";
 import { useEffect, useState } from "react";
 import useAuthStore from "../store/useAuthStore";
+import useAlertStore from "../store/useAlertStore";
 import {
   cancelBooking,
   getErrorMessage,
@@ -11,7 +12,6 @@ import {
 import { getProfile, downloadFanId } from "../services/usersApi";
 import { Link } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
-import Lanyard from "../components/Lanyard";
 
 export default function MyTicketsPage() {
   const token = useAuthStore((state) => state.token);
@@ -133,11 +133,15 @@ export default function MyTicketsPage() {
     }
   };
 
+  const showPrompt = useAlertStore((state) => state.showPrompt);
+
   const handleTransfer = async (ticket) => {
     const bookingId = ticket.bookingId || ticket.id;
     if (!bookingId) return;
-    const toUsername = window.prompt("Transfer to username:");
+    
+    const toUsername = await showPrompt("Transfer Ticket", "Transfer to username:", "info");
     if (!toUsername) return;
+    
     setActionLoadingId(bookingId);
     setError("");
     setSuccess("");
@@ -196,77 +200,79 @@ export default function MyTicketsPage() {
           {/* Left Column - Profile & Wallet */}
           <div className="flex flex-col gap-6 lg:col-span-4 mx-auto lg:mx-0 w-full max-w-sm sm:max-w-md lg:max-w-sm">
             {/* Identity Card */}
-            <div className="rounded-xl border border-[#ffffff0a] bg-[#1a1b1f] w-full max-w-sm overflow-hidden h-[600px]">
-              <Lanyard 
-                position={[0, 0, 20]} 
-                gravity={[0, -20, 0]}
-                imageUrl={tickets[0] ? resolveImg(events.find(e => e.id === tickets[0].eventId || e.name === tickets[0].eventName)?.imageUrl || tickets[0].imageUrl) : undefined}
-              >
-                <div className="pt-2 pb-1 text-center w-full flex flex-col items-center select-none gap-1" style={{ background: 'transparent' }}>
-                  {/* Photo + Verified */}
-                  <div className="flex justify-center relative w-full mb-1">
-                    <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-zinc-800 ring-1 ring-white/10 shadow-xl mx-auto">
-                      {profileLoading ? (
-                        <div className="flex h-full w-full items-center justify-center bg-zinc-900">
-                          <Loader2 className="w-4 h-4 text-teal-400 animate-spin" />
-                        </div>
-                      ) : (
-                        <img
-                          src={resolveImg(profile?.profilePictureUrl || profile?.profilePicture || user?.profilePictureUrl)}
-                          alt={profile?.firstName || username}
-                          className="w-full h-full object-cover"
-                        />
-                      )}
-                    </div>
-                    <div className="absolute top-0 right-0 bg-[#141517] rounded-full px-1.5 py-0.5 flex items-center gap-1 border border-white/5">
-                      <div className="w-1 h-1 rounded-full bg-teal-400"></div>
-                      <span className="text-[7px] font-bold tracking-widest text-teal-400 uppercase">Verified</span>
-                    </div>
-                  </div>
-
-                  {/* Name */}
-                  <h2 className="text-[11px] font-bold text-white tracking-tight text-center w-full leading-tight">
+            <div className="relative rounded-3xl bg-[#1a1b1f] w-full max-w-sm flex flex-col overflow-hidden">
+              <div className="p-6 lg:p-8 pb-6 flex flex-col items-center">
+                {/* Photo + Verified */}
+                <div className="flex justify-center relative w-full mb-4">
+                  <div className="relative w-24 h-24 rounded-2xl overflow-hidden bg-zinc-800 ring-2 ring-white/10 shadow-xl mx-auto">
                     {profileLoading ? (
-                      <span className="inline-block w-16 h-3 bg-zinc-800 rounded animate-pulse"></span>
+                      <div className="flex h-full w-full items-center justify-center bg-zinc-900">
+                        <Loader2 className="w-6 h-6 text-teal-400 animate-spin" />
+                      </div>
                     ) : (
-                      profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : username
+                      <img
+                        src={resolveImg(profile?.profilePictureUrl || profile?.profilePicture || user?.profilePictureUrl)}
+                        alt={profile?.firstName || username}
+                        className="w-full h-full object-cover"
+                      />
                     )}
-                  </h2>
-
-                  {/* ID */}
-                  <p className="text-[7px] font-bold tracking-widest text-[#5c6870] uppercase font-mono w-full text-center overflow-hidden text-ellipsis whitespace-nowrap px-1 mb-1">
-                    {profileLoading ? (
-                      <span className="inline-block w-14 h-2 bg-zinc-800 rounded animate-pulse"></span>
-                    ) : (
-                      `ID: ${(profile?.id || user?.id || "N/A").toString().slice(0, 8)}...`
-                    )}
-                  </p>
-
-                  {/* Badges */}
-                  <div className="space-y-1 w-full px-1">
-                    <div className="flex items-center gap-1.5 rounded bg-[#212328] border border-white/5 px-2 py-1">
-                      <CheckCircle2 className="w-2.5 h-2.5 text-teal-400 shrink-0" />
-                      <span className="text-[7px] font-bold tracking-widest text-white uppercase">Photo Auth</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 rounded bg-[#212328] border border-white/5 px-2 py-1">
-                      <CheckCircle2 className="w-2.5 h-2.5 text-teal-400 shrink-0" />
-                      <span className="text-[7px] font-bold tracking-widest text-white uppercase">National ID</span>
-                    </div>
                   </div>
-
-                  {/* Button */}
-                  <button
-                    type="button"
-                    onClick={handleDownloadPdf}
-                    disabled={downloadingPdf}
-                    style={{ pointerEvents: 'auto' }}
-                    className="mt-1 w-full flex items-center justify-center gap-1 rounded bg-white py-1.5 text-[7px] font-bold tracking-widest uppercase text-black transition-colors hover:bg-zinc-200 disabled:opacity-60 cursor-pointer"
-                  >
-                    {downloadingPdf ? <Loader2 className="w-2 h-2 animate-spin" /> : <Download className="w-2 h-2" />}
-                    {downloadingPdf ? "Generating..." : "Fan ID"}
-                  </button>
+                  <div className="absolute top-0 right-1/2 -mr-16 bg-[#141517] rounded-full px-2 py-1 flex items-center gap-1.5 border border-white/5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-teal-400"></div>
+                    <span className="text-[9px] font-bold tracking-widest text-teal-400 uppercase">Verified</span>
+                  </div>
                 </div>
-              </Lanyard>
+
+                {/* Name */}
+                <h2 className="text-xl font-bold text-white tracking-tight text-center w-full mb-1">
+                  {profileLoading ? (
+                    <span className="inline-block w-24 h-5 bg-zinc-800 rounded animate-pulse"></span>
+                  ) : (
+                    profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : username
+                  )}
+                </h2>
+
+                {/* ID */}
+                <p className="text-xs font-bold tracking-widest text-[#5c6870] uppercase font-mono w-full text-center overflow-hidden text-ellipsis whitespace-nowrap">
+                  {profileLoading ? (
+                    <span className="inline-block w-20 h-3 bg-zinc-800 rounded animate-pulse"></span>
+                  ) : (
+                    `ID: ${(profile?.id || user?.id || "N/A").toString().slice(0, 12)}...`
+                  )}
+                </p>
+              </div>
+
+              {/* TICKET DIVIDER */}
+              <div className="relative flex items-center justify-center w-full h-8 z-10">
+                 <div className="absolute -left-4 w-8 h-8 rounded-full bg-[#111214] shadow-inner" />
+                 <div className="absolute -right-4 w-8 h-8 rounded-full bg-[#111214] shadow-inner" />
+                 <div className="w-[calc(100%-40px)] border-t-[2px] border-dashed border-white/10 opacity-60" />
+              </div>
+
+              <div className="p-6 lg:p-8 pt-4 flex flex-col items-center bg-black/10 flex-1">
+                {/* Badges */}
+                <div className="space-y-2 w-full mb-6">
+                  <div className="flex items-center gap-3 rounded-lg bg-[#212328] border border-white/5 px-3 py-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
+                    <span className="text-xs font-bold tracking-widest text-white uppercase">Photo Auth</span>
+                  </div>
+                  <div className="flex items-center gap-3 rounded-lg bg-[#212328] border border-white/5 px-3 py-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
+                    <span className="text-xs font-bold tracking-widest text-white uppercase">National ID</span>
+                  </div>
+                </div>
+
+                {/* Button */}
+                <button
+                  type="button"
+                  onClick={handleDownloadPdf}
+                  disabled={downloadingPdf}
+                  className="w-full flex items-center justify-center gap-2 rounded-lg bg-white py-3 text-xs font-bold tracking-widest uppercase text-black transition-colors hover:bg-zinc-200 disabled:opacity-60 cursor-pointer"
+                >
+                  {downloadingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  {downloadingPdf ? "Generating..." : "Download Fan ID"}
+                </button>
+              </div>
             </div>
 
             {/* Secure Wallet Card */}
@@ -322,17 +328,18 @@ export default function MyTicketsPage() {
                 return (
                   <div
                     key={bookingId}
-                    className="relative flex flex-col sm:flex-row overflow-hidden rounded-xl border border-[#ffffff0a] min-h-[180px]"
+                    className="relative flex flex-col overflow-hidden rounded-3xl min-h-[180px] bg-[#1a1b1f]"
                   >
                     {/* Background Image */}
                     <div 
-                      className="absolute inset-0 z-0 bg-cover bg-center opacity-40"
+                      className="absolute inset-0 z-0 bg-cover bg-center opacity-40 pointer-events-none"
                       style={{ backgroundImage: `url(${eventImage})` }}
                     />
                     {/* Dark Overlay for Readability */}
-                    <div className="absolute inset-0 z-0 bg-gradient-to-r from-[#1a1b1f] via-[#1a1b1f]/95 to-[#1a1b1f]/80" />
+                    <div className="absolute inset-0 z-0 bg-gradient-to-r from-[#1a1b1f] via-[#1a1b1f]/95 to-[#1a1b1f]/80 pointer-events-none" />
 
-                    <div className="relative z-10 flex flex-1 flex-col p-6 lg:p-8">
+                    {/* TOP SECTION (Info + QR) */}
+                    <div className="relative z-10 flex flex-1 flex-col p-6 lg:p-8 pb-4">
                       <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
                         <div>
                           <h3 className="mb-1.5 text-2xl font-bold tracking-tight text-white pr-4">
@@ -347,14 +354,14 @@ export default function MyTicketsPage() {
                           Booking #{bookingId}
                         </span>
                       </div>
-                      <div className="mb-8 flex items-end justify-between border-t border-white/5 pt-5 mt-auto">
+                      <div className="flex items-end justify-between mt-auto pt-4">
                         <div>
                           <p className="text-[10px] font-bold tracking-widest text-[#5c6870] uppercase mb-1">
                             Seat
                           </p>
                           <p className="text-xl font-bold text-white">{seat}</p>
                         </div>
-                        <div className="rounded-lg bg-white p-2 flex items-center justify-center">
+                        <div className="rounded-lg bg-white p-2 flex items-center justify-center shadow-lg">
                           <QRCodeSVG
                             value={ticket.qrData || ticket.qrCode || String(bookingId)}
                             size={64}
@@ -365,7 +372,18 @@ export default function MyTicketsPage() {
                           />
                         </div>
                       </div>
-                      <div className="flex gap-3 mt-auto">
+                    </div>
+
+                    {/* TICKET DIVIDER */}
+                    <div className="relative flex items-center justify-center w-full h-8 z-10">
+                       <div className="absolute -left-4 w-8 h-8 rounded-full bg-[#111214] shadow-inner" />
+                       <div className="absolute -right-4 w-8 h-8 rounded-full bg-[#111214] shadow-inner" />
+                       <div className="w-[calc(100%-40px)] border-t-[2px] border-dashed border-white/10 opacity-60" />
+                    </div>
+
+                    {/* BOTTOM SECTION (Actions) */}
+                    <div className="relative z-10 p-6 lg:p-8 pt-4 bg-black/20">
+                      <div className="flex gap-3">
                         <button
                           type="button"
                           onClick={() => handleTransfer(ticket)}

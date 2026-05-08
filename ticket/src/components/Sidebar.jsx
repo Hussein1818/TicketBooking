@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Ticket, Wallet, Star, BarChart, Home, Settings, LogOut, X, Shield, User } from 'lucide-react';
+import { Ticket, Wallet, Star, BarChart, Home, Settings, LogOut, X, Shield, User, PartyPopper } from 'lucide-react';
 import useAuthStore from '../store/useAuthStore';
 
 const baseNavigation = [
   { name: 'Home', href: '/', icon: Home },
-  { name: 'Events', href: '/events', icon: Ticket },
+  { name: 'Events', href: '/events', icon: PartyPopper },
   { name: 'Wallet', href: '/wallet', icon: Wallet },
   { name: 'VIP PERKS', href: '/vip', icon: Star },
   { name: 'My Tickets', href: '/tickets', icon: Ticket },
@@ -96,7 +96,9 @@ export default function Sidebar({ isOpen, setIsOpen, expanded, setExpanded }) {
                     aria-hidden="true"
                     strokeWidth={1.5}
                   />
-                  {isExpandedView && item.name}
+                  <span className={`whitespace-nowrap transition-opacity duration-200 ${isExpandedView ? 'opacity-100 delay-100' : 'opacity-0 w-0 overflow-hidden'}`}>
+                    {item.name}
+                  </span>
                 </Link>
               );
             })}
@@ -104,7 +106,7 @@ export default function Sidebar({ isOpen, setIsOpen, expanded, setExpanded }) {
         </div>
 
         <div className={`mt-8 ${isExpandedView ? '' : 'flex justify-center'}`}>
-          {isExpandedView && <div className="border-t border-white/5 mb-8"></div>}
+          <div className={`border-t border-white/5 mb-8 transition-opacity duration-200 ${isExpandedView ? 'opacity-100 delay-100' : 'opacity-0 h-0 overflow-hidden mb-0'}`}></div>
 
           <div className={`space-y-6 ${isExpandedView ? 'px-3' : ''}`}>
              <button 
@@ -128,11 +130,12 @@ export default function Sidebar({ isOpen, setIsOpen, expanded, setExpanded }) {
                  auth.logout();
                  window.location.href = '/signin';
                }}
-               className={`w-full flex items-center text-[15px] font-light text-[#8e959b] hover:text-white transition-colors group ${isExpandedView ? '' : 'justify-center'}`}
+               className={`w-full flex items-center text-[15px] font-light text-[#8e959b] hover:text-white transition-colors group cursor-pointer ${isExpandedView ? '' : 'justify-center'}`}
              >
-               <LogOut className={`${isExpandedView ? 'mr-4' : 'mr-0'} h-5 w-5`} strokeWidth={1.5} />
-               {isExpandedView && 'Log Out'}
-               {!isExpandedView && <span className="sr-only">Log Out</span>}
+               <LogOut className={`${isExpandedView ? 'mr-4' : 'mr-0'} h-5 w-5 flex-shrink-0 transition-colors duration-200`} strokeWidth={1.5} />
+               <span className={`whitespace-nowrap transition-opacity duration-200 ${isExpandedView ? 'opacity-100 delay-100' : 'opacity-0 w-0 overflow-hidden'}`}>
+                 Log Out
+               </span>
              </button>
           </div>
         </div>

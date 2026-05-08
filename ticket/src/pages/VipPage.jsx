@@ -108,27 +108,47 @@ export default function VipPage() {
               <div 
                 key={tier.id}
                 onClick={() => setSelectedTier(tier.id)}
-                className={`relative rounded-2xl border-2 transition-all cursor-pointer overflow-hidden group ${
+                className={`relative rounded-3xl border-2 transition-all cursor-pointer flex flex-col group ${
                   isSelected 
                     ? `${tier.border} ${tier.bg} shadow-[0_0_20px_rgba(0,0,0,0.5)] scale-105 z-10` 
                     : `border-white/5 bg-[#16171a] hover:border-white/20`
                 }`}
+                style={{
+                  WebkitMaskImage: 'radial-gradient(circle at 0% 50%, transparent 14px, black 15px), radial-gradient(circle at 100% 50%, transparent 14px, black 15px)',
+                  WebkitMaskSize: '51% 100%',
+                  WebkitMaskRepeat: 'no-repeat',
+                  WebkitMaskPosition: 'left top, right top',
+                  maskImage: 'radial-gradient(circle at 0% 50%, transparent 14px, black 15px), radial-gradient(circle at 100% 50%, transparent 14px, black 15px)',
+                  maskSize: '51% 100%',
+                  maskRepeat: 'no-repeat',
+                  maskPosition: 'left top, right top',
+                }}
               >
                 {/* Popular Badge */}
                 {tier.id === 2 && (
-                  <div className="absolute top-0 right-0 bg-teal-400 text-black text-[9px] font-bold uppercase tracking-widest px-3 py-1 rounded-bl-lg">
+                  <div className="absolute top-0 right-0 bg-teal-400 text-black text-[9px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-bl-xl z-20 shadow-md">
                     Recommended
                   </div>
                 )}
                 
-                <div className="p-8">
+                {/* TOP SECTION (Header & Price) */}
+                <div className="p-8 pb-6">
                   <Icon className={`w-10 h-10 ${tier.color} mb-6`} />
                   <h3 className="text-xl font-bold text-white mb-2">{tier.name}</h3>
-                  <div className="flex items-baseline gap-1 mb-6">
+                  <div className="flex items-baseline gap-1">
                     <span className="text-3xl font-bold text-white">EGP {tier.price}</span>
                     <span className="text-xs text-zinc-500 font-medium uppercase">/ month</span>
                   </div>
-                  
+                </div>
+                
+                {/* TICKET DIVIDER */}
+                <div className="relative flex items-center justify-center w-full h-4">
+                   {/* Dashed Line */}
+                   <div className={`w-full mx-6 border-t-[2px] border-dashed ${isSelected ? tier.border : 'border-white/10'} opacity-60`} />
+                </div>
+                
+                {/* BOTTOM SECTION (Perks) */}
+                <div className="p-8 pt-6 flex-1 bg-black/10">
                   <ul className="space-y-4">
                     {tier.perks.map((perk, idx) => (
                       <li key={idx} className="flex items-start gap-3">
