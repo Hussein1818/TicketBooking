@@ -40,6 +40,8 @@ import BookingCallbackPage from "./pages/bookings/BookingCallbackPage";
 // Components
 import ProtectedRoute from "./components/ProtectedRoute";
 
+import TicketAlert from "./components/TicketAlert";
+
 // ─────────────────────────────────────────────
 
 function App() {
@@ -48,40 +50,148 @@ function App() {
   const user = useAuthStore((state) => state.user);
 
   return (
-    <Routes>
+    <>
+      <TicketAlert />
+      <Routes>
       {/* ── Public Routes ── */}
-      <Route path="/signin"               element={<SignInPage />} />
-      <Route path="/signup"               element={<SignUpPage />} />
-      <Route path="/forgot-password"      element={<ForgotPasswordPage />} />
-      <Route path="/reset-password"       element={<ResetPasswordPage />} />
-      <Route path="/resend-confirmation"  element={<ResendConfirmationPage />} />
-      <Route path="/session"              element={<SessionPage />} />
-      <Route path="/booking/validate"     element={<ValidateTicketPage />} />
-      <Route path="/booking/scan"         element={<ScanTicketPage />} />
-      <Route path="/booking/callback"     element={<BookingCallbackPage />} />
+      <Route path="/signin" element={<SignInPage />} />
+      <Route path="/signup" element={<SignUpPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/resend-confirmation" element={<ResendConfirmationPage />} />
+      <Route path="/session" element={<SessionPage />} />
+      <Route path="/booking/validate" element={<ValidateTicketPage />} />
+      <Route path="/booking/scan" element={<ScanTicketPage />} />
+      <Route path="/booking/callback" element={<BookingCallbackPage />} />
 
       {/* ── Protected Routes ── */}
-      <Route path="/"             element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
-      <Route path="/events"       element={<ProtectedRoute><DiscoverPage /></ProtectedRoute>} />
-      <Route path="/booking/:id"  element={<ProtectedRoute><EventBookingPage /></ProtectedRoute>} />
-      <Route path="/tickets"      element={<ProtectedRoute><MyTicketsPage /></ProtectedRoute>} />
-      <Route path="/wallet"       element={<ProtectedRoute><WalletPage /></ProtectedRoute>} />
-      <Route path="/change-password" element={<ProtectedRoute><ChangePasswordPage /></ProtectedRoute>} />
-      <Route path="/settings"     element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-      <Route path="/vip"          element={<ProtectedRoute><VipPage /></ProtectedRoute>} />
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <HomePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/events"
+        element={
+          <ProtectedRoute>
+            <DiscoverPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/booking/:id"
+        element={
+          <ProtectedRoute>
+            <EventBookingPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/tickets"
+        element={
+          <ProtectedRoute>
+            <MyTicketsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/wallet"
+        element={
+          <ProtectedRoute>
+            <WalletPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/change-password"
+        element={
+          <ProtectedRoute>
+            <ChangePasswordPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <SettingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/vip"
+        element={
+          <ProtectedRoute>
+            <VipPage />
+          </ProtectedRoute>
+        }
+      />
 
       {/* ── Admin Routes ── */}
-      <Route path="/admin"        element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
-      <Route path="/analytics"    element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
-      <Route path="/logs"         element={<ProtectedRoute><AdminLogsPage /></ProtectedRoute>} />
-      <Route path="/manage-event" element={<ProtectedRoute><ManageEventPage /></ProtectedRoute>} />
-      <Route path="/staff"        element={<ProtectedRoute><StaffPage /></ProtectedRoute>} />
-      <Route path="/blast-campaign" element={<ProtectedRoute><BlastCampaignPage /></ProtectedRoute>} />
-      <Route path="/users-management" element={<ProtectedRoute><UsersManagementPage /></ProtectedRoute>} />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <AdminPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/analytics"
+        element={
+          <ProtectedRoute>
+            <AnalyticsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/logs"
+        element={
+          <ProtectedRoute>
+            <AdminLogsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/manage-event"
+        element={
+          <ProtectedRoute>
+            <ManageEventPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/staff"
+        element={
+          <ProtectedRoute>
+            <StaffPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/blast-campaign"
+        element={
+          <ProtectedRoute>
+            <BlastCampaignPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/users-management"
+        element={
+          <ProtectedRoute>
+            <UsersManagementPage />
+          </ProtectedRoute>
+        }
+      />
 
       {/* ── Fallback ── */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   );
 }
 
