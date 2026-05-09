@@ -64,7 +64,7 @@ export default function HomePage() {
       const timer = setTimeout(() => {
         setShowWelcome(false);
         sessionStorage.setItem("hasVisitedHome", "true");
-      }, 2500); // 2.5 seconds
+      }, 4500); // 4.5 seconds
       return () => clearTimeout(timer);
     }
   }, [showWelcome]);
@@ -260,6 +260,7 @@ export default function HomePage() {
                 separator=","
                 direction="up"
                 duration={2}
+                delay={5}
                 className="count-up-text"
               />
               K+
