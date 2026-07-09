@@ -38,13 +38,7 @@ export default function SignInPage() {
       setSuccess('Login successful! Redirecting...');
       setTimeout(() => navigate('/'), 1500);
     } catch (err) {
-      setError(
-        err.response?.data?.detail ||
-        err.response?.data?.message ||
-        err.response?.data?.title ||
-        err.message ||
-        'Login failed. Please check your credentials.'
-      );
+      setError('Invalid email or password');
     } finally {
       setLoading(false);
     }

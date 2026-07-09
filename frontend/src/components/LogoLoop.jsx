@@ -19,7 +19,7 @@ export default function LogoLoop({ logos = [], speed = 30, direction = 'left', g
     <div className="relative w-full overflow-hidden">
       {/* Fade edges */}
       <div className="pointer-events-none absolute inset-y-0 left-0 w-12 sm:w-20 z-10 bg-gradient-to-r from-[#111214] to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-12 sm:w-20 z-10 bg-gradient-to-l from-[#111214] to-transparent" />
+      {/* <div className="pointer-events-none absolute inset-y-0 right-0 w-12 sm:w-20 z-10 bg-gradient-to-l from-[#111214] to-transparent" /> */}
 
       <div
         ref={trackRef}
