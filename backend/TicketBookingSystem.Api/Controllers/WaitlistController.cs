@@ -22,12 +22,13 @@ public class WaitlistController : ControllerBase
     [HttpPost("join")]
     public async Task<IActionResult> Join([FromBody] JoinWaitlistCommand command)
     {
-        
-        command.UserId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier) ?? string.Empty;
+        command.UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        if (string.IsNullOrEmpty(command.UserId)) return Unauthorized();
 
         var success = await _mediator.Send(command);
+
         if (!success)
-            return BadRequest(new { Message = "You are already on the waitlist for this event." });
+            return BadRequest(new { Message = "You are already on the waitlist for this event or user email not found." });
 
         return Ok(new { Message = "Successfully joined the waitlist!" });
     }

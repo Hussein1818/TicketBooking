@@ -1,4 +1,6 @@
-﻿namespace TicketBookingSystem.Application.Interfaces;
+﻿using System.Threading.Tasks;
+
+namespace TicketBookingSystem.Application.Interfaces;
 
 public interface IEmailService
 {

@@ -1,16 +1,19 @@
 ﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
-using TicketBookingSystem.Application.Interfaces;
-using TicketBookingSystem.Domain.Entities;
 using System.Linq;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using TicketBookingSystem.Application.Interfaces;
+using TicketBookingSystem.Domain.Entities;
 
 namespace TicketBookingSystem.Application.Features.Waitlists.Commands;
 
 public class JoinWaitlistCommand : IRequest<bool>
 {
     public int EventId { get; set; }
+
+    [JsonIgnore]
     public string UserId { get; set; } = string.Empty;
 }
 
@@ -25,12 +28,13 @@ public class JoinWaitlistCommandHandler : IRequestHandler<JoinWaitlistCommand, b
 
     public async Task<bool> Handle(JoinWaitlistCommand request, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrEmpty(request.UserId)) return false;
+
         var exists = await _context.Waitlists
             .AnyAsync(w => w.EventId == request.EventId && w.UserId == request.UserId, cancellationToken);
 
         if (exists) return false;
 
-        
         var userEmail = await _context.Users
             .Where(u => u.Id == request.UserId)
             .Select(u => u.Email)
@@ -46,6 +50,7 @@ public class JoinWaitlistCommandHandler : IRequestHandler<JoinWaitlistCommand, b
         });
 
         await _context.SaveChangesAsync(cancellationToken);
+
         return true;
     }
 }

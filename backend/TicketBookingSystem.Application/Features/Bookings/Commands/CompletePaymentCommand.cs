@@ -50,71 +50,71 @@ public class CompletePaymentCommandHandler : IRequestHandler<CompletePaymentComm
 
     public async Task<bool> Handle(CompletePaymentCommand request, CancellationToken cancellationToken)
     {
-        if (!request.Success) return false;
-
         var order = await _context.Orders
             .Include(o => o.Bookings)
-                .ThenInclude(b => b.Seat)
-                    .ThenInclude(s => s.Event)
+            .ThenInclude(b => b.Seat)
+            .ThenInclude(s => s.Event)
             .FirstOrDefaultAsync(o => o.Id == request.OrderId, cancellationToken);
 
-        if (order == null || order.Status == "Paid") return false;
+        if (order == null || order.Status == "Paid")
+            return false;
 
-        order.Status = "Paid";
-
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.UserName == order.UserId, cancellationToken);
-        if (user != null)
+        if (!request.Success)
         {
-            int pointsToAward = (int)(order.TotalAmount / 10); // Give 1 point for every 10 EGP
-            user.AddLoyaltyPoints(pointsToAward);
-            _context.AuditLogs.Add(new AuditLog { Username = user.UserName!, Action = "Loyalty Points", Details = $"Earned {pointsToAward} points from Paymob purchase." });
-        }
+            order.Status = "Failed";
 
-        foreach (var booking in order.Bookings)
-        {
-            if (booking.Seat.Status == SeatStatus.Locked)
+            foreach (var booking in order.Bookings)
             {
-                // Use centralized revenue split
-                _pricingService.ApplyRevenueSplit(booking);
-
-                booking.Seat.Status = SeatStatus.Booked;
-
+                booking.Seat.Status = SeatStatus.Available;
                 if (!string.IsNullOrEmpty(booking.JobId))
                 {
                     _jobService.CancelJob(booking.JobId);
                 }
-            }
-        }
 
-        // EH-01 FIX: Do NOT swallow concurrency exceptions — a failed save means
-        // seat statuses were NOT updated, so returning true would be a lie.
-        try
-        {
+                await _hubService.SendSeatAvailableNotification(booking.SeatId);
+            }
+
+            _context.Bookings.RemoveRange(order.Bookings);
             await _context.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateConcurrencyException ex)
-        {
-            _logger.LogError(ex, "Concurrency conflict while completing payment for Order {OrderId}. " +
-                "Seat statuses may not have been updated. Manual review required.", request.OrderId);
             return false;
         }
 
-        foreach (var booking in order.Bookings) { await _hubService.SendSeatBookedNotification(booking.SeatId); }
+        order.Status = "Paid";
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == order.UserId, cancellationToken);
+        if (user != null)
+        {
+            int pointsToAward = (int)(order.TotalAmount / 10);
+            user.AddLoyaltyPoints(pointsToAward);
+            _context.AuditLogs.Add(new AuditLog { Username = user.UserName ?? string.Empty, Action = "Loyalty Points", Details = $"Earned {pointsToAward} points." });
+        }
+
+        foreach (var booking in order.Bookings)
+        {
+            booking.Seat.Status = SeatStatus.Booked;
+            _pricingService.ApplyRevenueSplit(booking);
+
+            if (!string.IsNullOrEmpty(booking.JobId))
+            {
+                _jobService.CancelJob(booking.JobId);
+            }
+
+            await _hubService.SendSeatBookedNotification(booking.SeatId);
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
         await _hubService.SendDashboardUpdate();
 
-        var userEmail = await _context.Users
-            .Where(u => u.UserName == order.UserId)
-            .Select(u => u.Email)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (!string.IsNullOrEmpty(userEmail))
+        if (user != null)
         {
+            var userEmail = user.Email;
+            if (string.IsNullOrEmpty(userEmail)) return true;
+
             foreach (var booking in order.Bookings)
             {
-                var emailBody = _emailTemplateService.GetPaymentSuccessEmailTemplate(
+                string emailBody = _emailTemplateService.GetPaymentSuccessEmailTemplate(
                     order.UserId,
                     booking.Seat.SeatNumber,
-                 
                     booking.AmountPaid,
                     booking.Seat.Event.Name);
 
@@ -125,7 +125,6 @@ public class CompletePaymentCommandHandler : IRequestHandler<CompletePaymentComm
                     seatNumber: booking.Seat.SeatNumber,
                     username: order.UserId,
                     seatId: booking.SeatId
-
                 );
 
                 try
@@ -139,7 +138,6 @@ public class CompletePaymentCommandHandler : IRequestHandler<CompletePaymentComm
                 }
                 catch (Exception ex)
                 {
-                    // EH-02 FIX: Use structured logging instead of Console.WriteLine
                     _logger.LogError(ex, "Failed to send ticket email to {Email} for Order {OrderId}, Seat {SeatNumber}",
                         userEmail, request.OrderId, booking.Seat.SeatNumber);
                 }
@@ -148,4 +146,4 @@ public class CompletePaymentCommandHandler : IRequestHandler<CompletePaymentComm
 
         return true;
     }
-}
+}

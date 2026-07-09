@@ -1,7 +1,9 @@
 ﻿using Microsoft.Extensions.Configuration;
+using System.Linq;
 using System.Net.Http.Json;
-using TicketBookingSystem.Application.Interfaces;
 using System.Threading.Tasks;
+using TicketBookingSystem.Application.Interfaces;
+using TicketBookingSystem.Domain.Constants;
 
 namespace TicketBookingSystem.Infrastructure.Services;
 
@@ -18,7 +20,7 @@ public class PaymobPaymentService : IPaymentService
         _currentUserService = currentUserService;
     }
 
-    public async Task<string> GetPaymentUrlAsync(int bookingId, decimal amount, string currency = "EGP")
+    public async Task<string> GetPaymentUrlAsync(int bookingId, decimal amount, string currency = AppConstants.DefaultCurrency)
     {
         var apiKey = _configuration["Paymob:ApiKey"];
         var integrationId = _configuration["Paymob:IntegrationId"];
@@ -26,7 +28,9 @@ public class PaymobPaymentService : IPaymentService
 
         if (apiKey == "YOUR_API_KEY" || string.IsNullOrEmpty(apiKey) || apiKey.StartsWith("YOUR"))
         {
-            return $"https://localhost:7203/api/Bookings/callback?success=true&merchant_order_id={bookingId}";
+            var allowedOrigins = _configuration.GetSection("AllowedOrigins").Get<string[]>();
+            var frontendUrl = allowedOrigins?.FirstOrDefault() ?? "http://localhost:5173";
+            return $"{frontendUrl}/payment-result?success=true&orderId={bookingId}";
         }
 
         var authResponse = await _httpClient.PostAsJsonAsync("https://accept.paymob.com/api/auth/tokens", new { api_key = apiKey });
@@ -45,10 +49,10 @@ public class PaymobPaymentService : IPaymentService
         });
 
         var orderResult = await orderResponse.Content.ReadFromJsonAsync<PaymobOrderResponse>();
-        var orderId = orderResult!.Id.ToString();
+        var orderId = orderResult!.Id;
 
-        var username = _currentUserService.Username ?? "User";
-        var email = _currentUserService.Email ?? "customer@ticketbooking.com";
+        string username = _currentUserService.Username ?? "Guest";
+        string email = _currentUserService.Email ?? "customer@ticketbooking.com";
 
         var paymentKeyResponse = await _httpClient.PostAsJsonAsync("https://accept.paymob.com/api/acceptance/payment_keys", new
         {

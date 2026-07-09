@@ -7,6 +7,8 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using TicketBookingSystem.Application.DTOs.Seats;
+using TicketBookingSystem.Application.Exceptions;
 using TicketBookingSystem.Application.Interfaces;
 using TicketBookingSystem.Domain.Entities;
 
@@ -15,14 +17,6 @@ namespace TicketBookingSystem.Application.Features.Seats.Queries;
 public class GetEventSeatsQuery : IRequest<List<SeatDto>>
 {
     public int EventId { get; set; }
-}
-
-public class SeatDto
-{
-    public int Id { get; set; }
-    public string SeatNumber { get; set; }
-    public decimal Price { get; set; }
-    public string Status { get; set; }
 }
 
 public class GetEventSeatsQueryHandler : IRequestHandler<GetEventSeatsQuery, List<SeatDto>>
@@ -40,16 +34,14 @@ public class GetEventSeatsQueryHandler : IRequestHandler<GetEventSeatsQuery, Lis
     {
         var cacheKey = $"Seats_Event_{request.EventId}";
 
-        
         var cachedSeats = await _cache.GetStringAsync(cacheKey, cancellationToken);
         if (!string.IsNullOrEmpty(cachedSeats))
         {
             return JsonSerializer.Deserialize<List<SeatDto>>(cachedSeats)!;
         }
 
-       
         var eventExists = await _context.Events.AsNoTracking().AnyAsync(e => e.Id == request.EventId, cancellationToken);
-        if (!eventExists) throw new TicketBookingSystem.Application.Exceptions.NotFoundException(nameof(Domain.Entities.Event), request.EventId);
+        if (!eventExists) throw new NotFoundException(nameof(Event), request.EventId);
 
         var seats = await _context.Seats.AsNoTracking()
             .Where(s => s.EventId == request.EventId)
@@ -62,7 +54,6 @@ public class GetEventSeatsQueryHandler : IRequestHandler<GetEventSeatsQuery, Lis
             })
             .ToListAsync(cancellationToken);
 
-       
         var cacheOptions = new DistributedCacheEntryOptions
         {
             AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30)

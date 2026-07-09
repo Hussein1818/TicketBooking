@@ -7,7 +7,6 @@ namespace TicketBookingSystem.Domain.Entities;
 public class User : IdentityUser
 {
     public decimal WalletBalance { get; private set; } = 0;
-    public UserRole Role { get; set; } = UserRole.Customer;
     public string FullName { get; set; } = string.Empty;
     public string NationalId { get; set; } = string.Empty;
     public string Address { get; set; } = string.Empty;

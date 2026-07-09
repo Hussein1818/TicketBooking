@@ -1,47 +1,45 @@
 ﻿using MediatR;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using TicketBookingSystem.Application.Interfaces;
+using TicketBookingSystem.Application.DTOs.Admin;
+using TicketBookingSystem.Domain.Entities;
 
 namespace TicketBookingSystem.Application.Features.Admin.Queries;
 
 public class GetAllUsersQuery : IRequest<List<UserAdminDto>> { }
 
-public class UserAdminDto
-{
-    public string Id { get; set; } = string.Empty;
-    public string Username { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string FullName { get; set; } = string.Empty;
-    public string Role { get; set; } = string.Empty;
-    public string FanIdNumber { get; set; } = string.Empty;
-}
-
 public class GetAllUsersQueryHandler : IRequestHandler<GetAllUsersQuery, List<UserAdminDto>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly UserManager<User> _userManager;
 
-    public GetAllUsersQueryHandler(IApplicationDbContext context)
+    public GetAllUsersQueryHandler(UserManager<User> userManager)
     {
-        _context = context;
+        _userManager = userManager;
     }
 
     public async Task<List<UserAdminDto>> Handle(GetAllUsersQuery request, CancellationToken cancellationToken)
     {
-        return await _context.Users
-            .AsNoTracking()
-            .Select(u => new UserAdminDto
+        var users = await _userManager.Users.AsNoTracking().ToListAsync(cancellationToken);
+        var userDtos = new List<UserAdminDto>();
+
+        foreach (var user in users)
+        {
+            var roles = await _userManager.GetRolesAsync(user);
+            userDtos.Add(new UserAdminDto
             {
-                Id = u.Id,
-                Username = u.UserName ?? string.Empty,
-                Email = u.Email ?? string.Empty,
-                FullName = u.FullName,
-                Role = u.Role.ToString(),
-                FanIdNumber = u.FanIdNumber
-            })
-            .ToListAsync(cancellationToken);
+                Id = user.Id,
+                Username = user.UserName ?? string.Empty,
+                Email = user.Email ?? string.Empty,
+                FullName = user.FullName,
+                Role = roles.FirstOrDefault() ?? "Customer",
+                FanIdNumber = user.FanIdNumber
+            });
+        }
+
+        return userDtos;
     }
 }

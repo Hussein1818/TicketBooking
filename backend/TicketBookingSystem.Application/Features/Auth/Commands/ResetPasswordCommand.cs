@@ -1,12 +1,12 @@
-﻿using MediatR;
+﻿using TicketBookingSystem.Application.Exceptions;
+using TicketBookingSystem.Domain.Entities;
+using MediatR;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.WebUtilities;
+using System;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using TicketBookingSystem.Application.Exceptions;
-using TicketBookingSystem.Domain.Entities;
 
 namespace TicketBookingSystem.Application.Features.Auth.Commands;
 
@@ -30,9 +30,18 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
     {
         var user = await _userManager.FindByEmailAsync(request.Email);
         if (user == null)
-            throw new BadRequestException("Invalid request."); 
+            throw new BadRequestException("Invalid request.");
 
-        var decodedToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(request.Token));
+        // Pure C# Base64Url Decode
+        var base64 = request.Token.Replace('-', '+').Replace('_', '/');
+        switch (base64.Length % 4)
+        {
+            case 2: base64 += "=="; break;
+            case 3: base64 += "="; break;
+        }
+        var decodedTokenBytes = Convert.FromBase64String(base64);
+        var decodedToken = Encoding.UTF8.GetString(decodedTokenBytes);
+
         var result = await _userManager.ResetPasswordAsync(user, decodedToken, request.NewPassword);
 
         if (!result.Succeeded)

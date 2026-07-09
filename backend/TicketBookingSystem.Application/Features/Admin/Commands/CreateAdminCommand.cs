@@ -4,17 +4,15 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TicketBookingSystem.Application.Exceptions;
+using TicketBookingSystem.Domain.Constants;
 using TicketBookingSystem.Domain.Entities;
-using TicketBookingSystem.Domain.Enums;
 
 namespace TicketBookingSystem.Application.Features.Admin.Commands;
 
 public class CreateAdminCommand : IRequest<string>
 {
-    public string Username { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
-    public string FullName { get; set; } = string.Empty;
 }
 
 public class CreateAdminCommandHandler : IRequestHandler<CreateAdminCommand, string>
@@ -28,25 +26,18 @@ public class CreateAdminCommandHandler : IRequestHandler<CreateAdminCommand, str
 
     public async Task<string> Handle(CreateAdminCommand request, CancellationToken cancellationToken)
     {
-        var userExists = await _userManager.FindByNameAsync(request.Username);
-        if (userExists != null)
-            throw new ConflictException("Username is already taken.");
+        var existingUser = await _userManager.FindByEmailAsync(request.Email);
+        if (existingUser != null)
+            throw new ConflictException("User with this email already exists.");
 
-        var emailExists = await _userManager.FindByEmailAsync(request.Email);
-        if (emailExists != null)
-            throw new ConflictException("Email is already registered.");
-
-        var user = new User
+        var admin = new User
         {
-            UserName = request.Username,
+            UserName = request.Email,
             Email = request.Email,
-            FullName = request.FullName,
-            
-            Role = UserRole.Admin,
             EmailConfirmed = true
         };
 
-        var result = await _userManager.CreateAsync(user, request.Password);
+        var result = await _userManager.CreateAsync(admin, request.Password);
 
         if (!result.Succeeded)
         {
@@ -54,6 +45,8 @@ public class CreateAdminCommandHandler : IRequestHandler<CreateAdminCommand, str
             throw new BadRequestException($"Admin creation failed: {errors}");
         }
 
-        return user.Id;
+        await _userManager.AddToRoleAsync(admin, Roles.Admin);
+
+        return admin.Id;
     }
 }

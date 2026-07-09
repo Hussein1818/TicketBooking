@@ -1,10 +1,9 @@
 using MediatR;
-using TicketBookingSystem.Application.Exceptions;
-using TicketBookingSystem.Application.Interfaces;
-using TicketBookingSystem.Domain.Entities;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using TicketBookingSystem.Application.Interfaces;
+using TicketBookingSystem.Domain.Entities;
 
 namespace TicketBookingSystem.Application.Features.PromoCodes.Commands;
 
@@ -27,8 +26,6 @@ public class CreatePromoCodeCommandHandler : IRequestHandler<CreatePromoCodeComm
 
     public async Task<int> Handle(CreatePromoCodeCommand request, CancellationToken cancellationToken)
     {
-        // Input validation is handled by CreatePromoCodeCommandValidator in the pipeline.
-
         var promo = new PromoCode
         {
             Code = request.Code.ToUpper().Trim(),
@@ -44,4 +41,4 @@ public class CreatePromoCodeCommandHandler : IRequestHandler<CreatePromoCodeComm
 
         return promo.Id;
     }
-}
+}

@@ -20,7 +20,7 @@ public class TokenService : ITokenService
         _configuration = configuration;
     }
 
-    public string GenerateToken(User user)
+    public string GenerateToken(User user, IList<string> roles)
     {
         var jwtKey = _configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key is missing");
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
@@ -28,24 +28,28 @@ public class TokenService : ITokenService
 
         var claims = new List<Claim>
         {
-           
             new Claim(JwtRegisteredClaimNames.Sub, user.Id),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new Claim(ClaimTypes.NameIdentifier, user.Id),
-            new Claim(ClaimTypes.Name, user.UserName ?? string.Empty),
-            new Claim(ClaimTypes.Role, user.Role.ToString())
+            new Claim(ClaimTypes.Name, user.UserName ?? string.Empty)
         };
+
+        foreach (var role in roles)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role));
+        }
 
         var token = new JwtSecurityToken(
             issuer: _configuration["Jwt:Issuer"],
             audience: _configuration["Jwt:Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(15),
+            expires: DateTime.UtcNow.AddMinutes(double.Parse(_configuration["Jwt:DurationInMinutes"] ?? "60")),
             signingCredentials: creds
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
+
     public string GenerateRefreshToken()
     {
         var randomNumber = new byte[64];
@@ -65,7 +69,7 @@ public class TokenService : ITokenService
             ValidIssuer = _configuration["Jwt:Issuer"],
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-            ValidateLifetime = false 
+            ValidateLifetime = false
         };
 
         var tokenHandler = new JwtSecurityTokenHandler();

@@ -4,6 +4,8 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using TicketBookingSystem.Application.DTOs.Events;
+using TicketBookingSystem.Application.Exceptions;
 using TicketBookingSystem.Application.Interfaces;
 using TicketBookingSystem.Domain.Enums;
 
@@ -12,16 +14,6 @@ namespace TicketBookingSystem.Application.Features.Events.Queries;
 public class GetEventAnalyticsQuery : IRequest<EventAnalyticsDto>
 {
     public int EventId { get; set; }
-}
-
-public class EventAnalyticsDto
-{
-    public int EventId { get; set; }
-    public decimal TotalNetRevenue { get; set; }
-    public int TicketsSold { get; set; }
-    public int RemainingTickets { get; set; }
-    public int TotalCapacity { get; set; }
-    public string Velocity { get; set; } = string.Empty;
 }
 
 public class GetEventAnalyticsQueryHandler : IRequestHandler<GetEventAnalyticsQuery, EventAnalyticsDto>
@@ -40,20 +32,16 @@ public class GetEventAnalyticsQueryHandler : IRequestHandler<GetEventAnalyticsQu
             .FirstOrDefaultAsync(e => e.Id == request.EventId, cancellationToken);
 
         if (eventEntity == null)
-            throw new TicketBookingSystem.Application.Exceptions.NotFoundException("Event", request.EventId);
+            throw new NotFoundException(nameof(Domain.Entities.Event), request.EventId);
 
         var totalCapacity = eventEntity.Seats.Count;
         var soldSeats = eventEntity.Seats.Where(s => s.Status == SeatStatus.Booked).ToList();
         var ticketsSold = soldSeats.Count;
 
-
-        
         var totalNetRevenue = soldSeats.Sum(s => s.Price);
-
 
         var daysSinceCreation = Math.Max(1, (DateTime.UtcNow - eventEntity.EventDate.AddMonths(-1)).Days);
         var velocityNum = ticketsSold / daysSinceCreation;
-        string velocity = $"{velocityNum} tkt / day";
 
         return new EventAnalyticsDto
         {
@@ -62,7 +50,7 @@ public class GetEventAnalyticsQueryHandler : IRequestHandler<GetEventAnalyticsQu
             TicketsSold = ticketsSold,
             RemainingTickets = totalCapacity - ticketsSold,
             TotalCapacity = totalCapacity,
-            Velocity = velocity
+            Velocity = $"{velocityNum} tkt / day"
         };
     }
 }

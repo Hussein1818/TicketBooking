@@ -5,6 +5,7 @@ using TicketBookingSystem.Application.Features.Admin;
 using TicketBookingSystem.Application.Features.Admin.Commands;
 using TicketBookingSystem.Application.Features.Events.Commands;
 using System.Threading.Tasks;
+using TicketBookingSystem.Application.Features.Admin.Queries;
 
 namespace TicketBookingSystem.Api.Controllers;
 
@@ -60,7 +61,6 @@ public class AdminController : ControllerBase
         return Ok(new { Message = "Staff user created successfully.", UserId = userId });
     }
 
-    //create admin
     [Authorize(Roles = "Admin")]
     [HttpPost("create-admin")]
     public async Task<IActionResult> CreateAdmin([FromBody] CreateAdminCommand command)
@@ -72,7 +72,7 @@ public class AdminController : ControllerBase
     [HttpGet("users")]
     public async Task<IActionResult> GetAllUsers()
     {
-        var users = await _mediator.Send(new TicketBookingSystem.Application.Features.Admin.Queries.GetAllUsersQuery());
+        var users = await _mediator.Send(new GetAllUsersQuery());
         return Ok(users);
     }
 }

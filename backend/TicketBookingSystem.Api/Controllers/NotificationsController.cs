@@ -3,7 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using System.Threading.Tasks;
-using TicketBookingSystem.Application.Features.Notifications;
+using TicketBookingSystem.Application.Features.Notifications.Commands;
+using TicketBookingSystem.Application.Features.Notifications.Queries;
 
 namespace TicketBookingSystem.Api.Controllers;
 
@@ -22,8 +23,9 @@ public class NotificationsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetMyNotifications()
     {
-       
-        var userId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier) ?? string.Empty;
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
         var notifications = await _mediator.Send(new GetMyNotificationsQuery { UserId = userId });
         return Ok(notifications);
     }
@@ -31,8 +33,9 @@ public class NotificationsController : ControllerBase
     [HttpPut("{id}/read")]
     public async Task<IActionResult> MarkAsRead(int id)
     {
-       
-        var userId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier) ?? string.Empty;
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
         var success = await _mediator.Send(new MarkNotificationAsReadCommand { NotificationId = id, UserId = userId });
 
         if (!success)

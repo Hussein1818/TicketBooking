@@ -1,8 +1,10 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
 using TicketBookingSystem.Application.Features.PromoCodes.Commands;
 using TicketBookingSystem.Application.Features.PromoCodes.Queries;
+using TicketBookingSystem.Domain.Constants;
 
 namespace TicketBookingSystem.Api.Controllers;
 
@@ -17,20 +19,23 @@ public class PromoCodesController : ControllerBase
         _mediator = mediator;
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = Roles.Admin)]
     [HttpPost]
     public async Task<IActionResult> CreatePromoCode([FromBody] CreatePromoCodeCommand command)
     {
         var id = await _mediator.Send(command);
-        return Ok(new { Message = "Promo code created successfully", Id = id });
+        return Ok(new { Message = "Promo code created successfully.", Id = id });
     }
 
     [Authorize]
     [HttpGet("validate/{code}")]
     public async Task<IActionResult> ValidatePromoCode(string code)
     {
-        var discount = await _mediator.Send(new ValidatePromoCodeQuery { Code = code });
-        if (discount == 0) return BadRequest(new { Message = "Invalid or expired promo code." });
-        return Ok(new { DiscountPercentage = discount });
+        var result = await _mediator.Send(new ValidatePromoCodeQuery { Code = code });
+
+        if (result.DiscountPercentage == 0)
+            return BadRequest(new { Message = result.Message });
+
+        return Ok(result);
     }
 }

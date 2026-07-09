@@ -1,32 +1,24 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using TicketBookingSystem.Application.Interfaces;
-using TicketBookingSystem.Domain.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using TicketBookingSystem.Application.DTOs.Bookings;
+using TicketBookingSystem.Application.Interfaces;
+using TicketBookingSystem.Domain.Enums;
 
 namespace TicketBookingSystem.Application.Features.Bookings.Queries;
 
 public class GetUserTicketsQuery : IRequest<List<UserTicketDto>>
 {
+    [JsonIgnore]
     public string UserId { get; set; } = string.Empty;
-}
-
-public class UserTicketDto
-{
-    public int BookingId { get; set; }
-    public int SeatId { get; set; }
-    public string SeatNumber { get; set; } = string.Empty;
-    public string EventName { get; set; } = string.Empty;
-    public DateTime EventDate { get; set; }
-    public decimal AmountPaid { get; set; }
-    public string QrData { get; set; } = string.Empty;
 }
 
 public class GetUserTicketsQueryHandler : IRequestHandler<GetUserTicketsQuery, List<UserTicketDto>>
@@ -34,7 +26,6 @@ public class GetUserTicketsQueryHandler : IRequestHandler<GetUserTicketsQuery, L
     private readonly IApplicationDbContext _context;
     private readonly IConfiguration _configuration;
 
-    
     public GetUserTicketsQueryHandler(IApplicationDbContext context, IConfiguration configuration)
     {
         _context = context;
@@ -43,7 +34,6 @@ public class GetUserTicketsQueryHandler : IRequestHandler<GetUserTicketsQuery, L
 
     public async Task<List<UserTicketDto>> Handle(GetUserTicketsQuery request, CancellationToken cancellationToken)
     {
-        
         var authenticatedUser = request.UserId;
         if (string.IsNullOrEmpty(authenticatedUser)) return new List<UserTicketDto>();
 

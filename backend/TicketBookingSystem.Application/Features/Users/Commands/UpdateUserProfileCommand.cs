@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using System;
 using System.IO;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using TicketBookingSystem.Application.Exceptions;
@@ -13,11 +14,13 @@ namespace TicketBookingSystem.Application.Features.Users.Commands;
 
 public class UpdateUserProfileCommand : IRequest<string>
 {
+    [JsonIgnore]
     public string UserId { get; set; } = string.Empty;
+
     public string FullName { get; set; } = string.Empty;
     public string NationalId { get; set; } = string.Empty;
     public string Address { get; set; } = string.Empty;
-    public string PhoneNumber { get; set; } = string.Empty; 
+    public string PhoneNumber { get; set; } = string.Empty;
     public IFormFile? ProfilePicture { get; set; }
 }
 

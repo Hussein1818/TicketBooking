@@ -22,8 +22,10 @@ public class SubscriptionsController : ControllerBase
     [HttpPost("upgrade")]
     public async Task<IActionResult> UpgradeSubscription([FromBody] SubscribeCommand command)
     {
-        
         command.UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+
+        if (string.IsNullOrEmpty(command.UserId))
+            return Unauthorized();
 
         var success = await _mediator.Send(command);
 
