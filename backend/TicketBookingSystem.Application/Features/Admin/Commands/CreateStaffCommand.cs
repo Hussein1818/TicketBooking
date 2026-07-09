@@ -4,8 +4,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TicketBookingSystem.Application.Exceptions;
+using TicketBookingSystem.Domain.Constants;
 using TicketBookingSystem.Domain.Entities;
-using TicketBookingSystem.Domain.Enums;
 
 namespace TicketBookingSystem.Application.Features.Admin.Commands;
 
@@ -41,7 +41,7 @@ public class CreateStaffCommandHandler : IRequestHandler<CreateStaffCommand, str
             UserName = request.Username,
             Email = request.Email,
             FullName = request.FullName,
-            Role = UserRole.Staff
+            EmailConfirmed = true
         };
 
         var result = await _userManager.CreateAsync(user, request.Password);
@@ -51,6 +51,8 @@ public class CreateStaffCommandHandler : IRequestHandler<CreateStaffCommand, str
             var errors = string.Join(", ", result.Errors.Select(e => e.Description));
             throw new BadRequestException($"Staff creation failed: {errors}");
         }
+
+        await _userManager.AddToRoleAsync(user, Roles.Staff);
 
         return user.Id;
     }

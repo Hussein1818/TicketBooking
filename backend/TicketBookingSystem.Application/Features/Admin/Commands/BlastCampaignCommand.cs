@@ -1,6 +1,4 @@
-﻿// FORCE UPDATE TO FIX GITHUB DESYNC
-using FluentValidation;
-using Hangfire;
+﻿using Hangfire;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -19,20 +17,8 @@ public class BlastCampaignCommand : IRequest<int>
     public int EventId { get; set; }
     public string Subject { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
-
-    // Security Fields
     public string CurrentUserId { get; set; } = string.Empty;
     public bool IsAdmin { get; set; }
-}
-
-public class BlastCampaignCommandValidator : AbstractValidator<BlastCampaignCommand>
-{
-    public BlastCampaignCommandValidator()
-    {
-        RuleFor(v => v.EventId).GreaterThan(0).WithMessage("Event ID must be greater than 0.");
-        RuleFor(v => v.Subject).NotEmpty().MaximumLength(150).WithMessage("Subject is required and cannot exceed 150 characters.");
-        RuleFor(v => v.Message).NotEmpty().MaximumLength(1000).WithMessage("Message is required and cannot exceed 1000 characters.");
-    }
 }
 
 public class BlastCampaignCommandHandler : IRequestHandler<BlastCampaignCommand, int>
@@ -52,11 +38,9 @@ public class BlastCampaignCommandHandler : IRequestHandler<BlastCampaignCommand,
         if (eventEntity == null)
             throw new TicketBookingSystem.Application.Exceptions.NotFoundException(nameof(Event), request.EventId);
 
-        //  Only Admin or the Event Organizer can send campaigns for this event
         if (!request.IsAdmin && eventEntity.OrganizerId != request.CurrentUserId)
             throw new UnauthorizedAccessException("You don't have permission to launch a campaign for this event.");
 
-        // Fetch distinct users who have a booked seat for this event
         var attendees = await _context.Bookings
             .Include(b => b.User)
             .Where(b => b.Seat.EventId == request.EventId && b.Seat.Status == SeatStatus.Booked)
@@ -70,16 +54,14 @@ public class BlastCampaignCommandHandler : IRequestHandler<BlastCampaignCommand,
 
         foreach (var attendee in attendees)
         {
-            // 1. Prepare In-App Notification 
             notifications.Add(new Notification
             {
-                UserId = attendee.Username, // System uses UserName as UserId for Notifications
+                UserId = attendee.Username,
                 Message = request.Message,
                 Type = "BlastCampaign",
                 CreatedAt = DateTime.UtcNow
             });
 
-            // 2. Queue Email to be sent in the background (Fire-and-forget so API responds instantly)
             if (!string.IsNullOrEmpty(attendee.Email))
             {
                 BackgroundJob.Enqueue<IEmailService>(emailService =>
@@ -89,7 +71,6 @@ public class BlastCampaignCommandHandler : IRequestHandler<BlastCampaignCommand,
 
         _context.Notifications.AddRange(notifications);
 
-        // Audit Tracking
         _context.AuditLogs.Add(new AuditLog
         {
             Username = request.CurrentUserId,
@@ -99,7 +80,6 @@ public class BlastCampaignCommandHandler : IRequestHandler<BlastCampaignCommand,
 
         await _context.SaveChangesAsync(ct);
 
-        // 3. Fire Real-time SignalR Notifications......
         foreach (var attendee in attendees)
         {
             await _hubService.SendUserNotification(attendee.Username, request.Message, "BlastCampaign");
@@ -108,4 +88,3 @@ public class BlastCampaignCommandHandler : IRequestHandler<BlastCampaignCommand,
         return attendees.Count;
     }
 }
-

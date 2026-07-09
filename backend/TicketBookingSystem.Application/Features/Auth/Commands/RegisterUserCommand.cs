@@ -1,23 +1,25 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.WebUtilities;
+using System;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using TicketBookingSystem.Application.Exceptions;
 using TicketBookingSystem.Application.Interfaces;
+using TicketBookingSystem.Domain.Constants;
 using TicketBookingSystem.Domain.Entities;
-using TicketBookingSystem.Domain.Enums;
 
 namespace TicketBookingSystem.Application.Features.Auth.Commands;
 
 public class RegisterUserCommand : IRequest<string>
 {
+    public string FullName { get; set; } = string.Empty;
     public string Username { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
-    public string? ClientURI { get; set; } = string.Empty;
+
+    public string ClientURI { get; set; } = string.Empty;
 }
 
 public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, string>
@@ -43,12 +45,9 @@ public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, s
 
         var user = new User
         {
+            FullName = request.FullName,
             UserName = request.Username,
-            Email = request.Email,
-            Role = UserRole.Customer,
-
-            
-            EmailConfirmed = true
+            Email = request.Email
         };
 
         var result = await _userManager.CreateAsync(user, request.Password);
@@ -59,17 +58,21 @@ public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, s
             throw new BadRequestException($"Registration failed: {errors}");
         }
 
-        // 🛑 عملنا كومنت لكود التوكن والإيميل عشان ميضربش إيرور 500 (بسبب نقص الـ TokenProviders)
-        // TODO: URGENT - Uncomment this block and remove 'EmailConfirmed = true' before Production Release!
-        /*
+        await _userManager.AddToRoleAsync(user, Roles.Customer);
+
         var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-        var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+
+        var plainTextBytes = Encoding.UTF8.GetBytes(token);
+        var encodedToken = Convert.ToBase64String(plainTextBytes)
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
 
         var confirmationLink = $"{request.ClientURI}?userId={user.Id}&token={encodedToken}";
-        var emailBody = $"<h3>Welcome to Hussein Stadium!</h3><p>Please confirm your account by <a href='{confirmationLink}'>clicking here</a>.</p>";
 
-        await _emailService.SendEmailAsync(user.Email, "Confirm Your Email", emailBody);
-        */
+        var emailBody = $"<h3>Welcome to Ticket Booking System!</h3><p>Please confirm your account by <a href='{confirmationLink}'>clicking here</a>.</p>";
+
+        await _emailService.SendEmailAsync(user.Email, "Confirm Your Email - Ticket Booking", emailBody);
 
         return user.Id;
     }

@@ -1,7 +1,9 @@
 ﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using TicketBookingSystem.Application.DTOs.Users;
 using TicketBookingSystem.Application.Exceptions;
 using TicketBookingSystem.Application.Interfaces;
 
@@ -9,23 +11,8 @@ namespace TicketBookingSystem.Application.Features.Users.Queries;
 
 public class GetUserProfileQuery : IRequest<UserProfileDto>
 {
+    [JsonIgnore]
     public string UserId { get; set; } = string.Empty;
-}
-
-public class UserProfileDto
-{
-    public string Id { get; set; } = string.Empty;
-    public string Username { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string FullName { get; set; } = string.Empty;
-    public string NationalId { get; set; } = string.Empty;
-    public string Address { get; set; } = string.Empty;
-    public string PhoneNumber { get; set; } = string.Empty; 
-    public string FanIdNumber { get; set; } = string.Empty;
-    public string ProfilePictureUrl { get; set; } = string.Empty;
-    public decimal WalletBalance { get; set; }
-    public int LoyaltyPoints { get; set; }
-    public string Tier { get; set; } = string.Empty;
 }
 
 public class GetUserProfileQueryHandler : IRequestHandler<GetUserProfileQuery, UserProfileDto>
@@ -54,7 +41,7 @@ public class GetUserProfileQueryHandler : IRequestHandler<GetUserProfileQuery, U
             FullName = user.FullName,
             NationalId = user.NationalId,
             Address = user.Address ?? string.Empty,
-            PhoneNumber = user.PhoneNumber ?? string.Empty, 
+            PhoneNumber = user.PhoneNumber ?? string.Empty,
             FanIdNumber = user.FanIdNumber,
             ProfilePictureUrl = user.ProfilePictureUrl,
             WalletBalance = user.WalletBalance,

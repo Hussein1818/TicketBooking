@@ -1,12 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <Compile Remove="Features\Events\NewFolder\**" />
-    <EmbeddedResource Remove="Features\Events\NewFolder\**" />
-    <None Remove="Features\Events\NewFolder\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\TicketBookingSystem.Domain\TicketBookingSystem.Domain.csproj" />
   </ItemGroup>
 

@@ -3,43 +3,17 @@ using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using TicketBookingSystem.Application.DTOs.Events;
 using TicketBookingSystem.Application.Exceptions;
 using TicketBookingSystem.Application.Interfaces;
-using TicketBookingSystem.Domain.Enums; 
+using TicketBookingSystem.Domain.Enums;
 
-namespace TicketBookingSystem.Application.Features.Events.Queries.GetEventById;
-
-
-public class EventDetailsDto
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public System.DateTime EventDate { get; set; }
-    public string Venue { get; set; } = string.Empty;
-    public bool IsClosed { get; set; }
-    public int MaxTicketsPerUser { get; set; }
-    public string Category { get; set; } = string.Empty;
-    public string ImageUrl { get; set; } = string.Empty;
-    public int AttendingCount { get; set; }
-
-
-    public int FullRefundDays { get; set; }
-    public int PartialRefundDays { get; set; }
-    public decimal PartialRefundPercentage { get; set; }
-
-    public string OrganizerId { get; set; } = string.Empty;
-    public string OrganizerName { get; set; } = string.Empty;
-
-    public int TotalSeats { get; set; }
-    public int AvailableSeats { get; set; }
-}
-
+namespace TicketBookingSystem.Application.Features.Events.Queries;
 
 public class GetEventByIdQuery : IRequest<EventDetailsDto>
 {
     public int EventId { get; set; }
 }
-
 
 public class GetEventByIdQueryHandler : IRequestHandler<GetEventByIdQuery, EventDetailsDto>
 {
@@ -52,7 +26,6 @@ public class GetEventByIdQueryHandler : IRequestHandler<GetEventByIdQuery, Event
 
     public async Task<EventDetailsDto> Handle(GetEventByIdQuery request, CancellationToken cancellationToken)
     {
-        
         var eventDetails = await _context.Events
             .AsNoTracking()
             .Where(e => e.Id == request.EventId)
@@ -72,16 +45,13 @@ public class GetEventByIdQueryHandler : IRequestHandler<GetEventByIdQuery, Event
                 OrganizerId = e.OrganizerId,
                 OrganizerName = e.Organizer != null ? e.Organizer.FullName : "Unknown",
                 AttendingCount = e.Seats.Count(s => s.Status == SeatStatus.Booked),
-
-
                 TotalSeats = e.Seats.Count(),
                 AvailableSeats = e.Seats.Count(s => s.Status == SeatStatus.Available)
             })
             .FirstOrDefaultAsync(cancellationToken);
 
-        
         if (eventDetails == null)
-            throw new NotFoundException("Event", request.EventId);
+            throw new NotFoundException(nameof(Domain.Entities.Event), request.EventId);
 
         return eventDetails;
     }

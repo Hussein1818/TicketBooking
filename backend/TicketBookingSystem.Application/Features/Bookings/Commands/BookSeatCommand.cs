@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using System;
 using System.Linq;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using TicketBookingSystem.Application.Exceptions;
@@ -16,6 +17,8 @@ namespace TicketBookingSystem.Application.Features.Bookings.Commands;
 public class BookSeatCommand : IRequest<int>
 {
     public int SeatId { get; set; }
+
+    [JsonIgnore]
     public string UserId { get; set; } = string.Empty;
 }
 
@@ -26,7 +29,6 @@ public class BookSeatCommandHandler : IRequestHandler<BookSeatCommand, int>
     private readonly IJobService _jobService;
     private readonly IDistributedCache _cache;
 
-    
     public BookSeatCommandHandler(
         IApplicationDbContext context,
         ITicketHubService hubService,
@@ -41,26 +43,17 @@ public class BookSeatCommandHandler : IRequestHandler<BookSeatCommand, int>
 
     public async Task<int> Handle(BookSeatCommand request, CancellationToken cancellationToken)
     {
-       
         var currentUserId = request.UserId;
-
-        if (string.IsNullOrEmpty(currentUserId))
-            throw new UnauthorizedAccessException("User not authenticated.");
 
         var seat = await _context.Seats
             .Include(s => s.Event)
             .FirstOrDefaultAsync(s => s.Id == request.SeatId, cancellationToken);
 
         if (seat == null) throw new NotFoundException(nameof(Seat), request.SeatId);
-
-        if (seat.Event.IsClosed || seat.Event.EventDate <= DateTime.UtcNow)
-            throw new BadRequestException("Event is closed or already past.");
-
-        if (seat.Status != SeatStatus.Available)
-            throw new BadRequestException("Seat is not available.");
+        if (seat.Event.IsClosed) throw new BadRequestException("This event is closed for booking.");
+        if (seat.Status != SeatStatus.Available) throw new ConflictException("Seat is not available.");
 
         var userTicketsCount = await _context.Bookings
-            .Include(b => b.Seat)
             .Where(b => b.UserId == currentUserId && b.Seat.EventId == seat.EventId && (b.Seat.Status == SeatStatus.Booked || b.Seat.Status == SeatStatus.Locked))
             .CountAsync(cancellationToken);
 
@@ -77,7 +70,7 @@ public class BookSeatCommandHandler : IRequestHandler<BookSeatCommand, int>
         var booking = new Booking
         {
             SeatId = seat.Id,
-            UserId = currentUserId, 
+            UserId = currentUserId,
             BookingDate = DateTime.UtcNow,
             AmountPaid = 0,
             JobId = jobId
@@ -96,9 +89,7 @@ public class BookSeatCommandHandler : IRequestHandler<BookSeatCommand, int>
         }
 
         await _cache.RemoveAsync($"Seats_Event_{seat.EventId}", cancellationToken);
-
         await _hubService.SendSeatLockedNotification(seat.Id, expiresAt);
-        await _hubService.SendDashboardUpdate();
 
         return booking.Id;
     }

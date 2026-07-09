@@ -1,10 +1,10 @@
 ﻿using TicketBookingSystem.Application.Interfaces;
+using TicketBookingSystem.Domain.Constants;
 
 namespace TicketBookingSystem.Infrastructure.Services;
 
 public class EmailTemplateService : IEmailTemplateService
 {
-    
     public string GetPaymentSuccessEmailTemplate(string username, string seatNumber, decimal amountPaid, string eventName)
     {
         return $@"
@@ -15,10 +15,9 @@ public class EmailTemplateService : IEmailTemplateService
                     <p style='color: #7f8c8d;'>Your ticket for <b>{eventName}</b> has been officially reserved.</p>
                     <div style='margin: 20px 0; padding: 15px; border-left: 5px solid #27ae60; background-color: #f9f9f9; text-align: left;'>
                         <p style='margin: 5px 0;'><b>Seat Number:</b> <span style='color: #e74c3c; font-weight: bold;'>{seatNumber}</span></p>
-                        <p style='margin: 5px 0;'><b>Amount Paid:</b> {amountPaid} EGP</p>
+                        <p style='margin: 5px 0;'><b>Amount Paid:</b> {amountPaid} {AppConstants.DefaultCurrency}</p>
                     </div>
-                    <p style='color: #34495e;'>You can download your Official PDF Ticket with the QR Code directly from the website.</p>
-                    <p style='color: #7f8c8d; font-size: 12px; margin-top: 20px;'>Thank you for choosing our ticketing platform.</p>
+                    <p style='color: #95a5a6; font-size: 14px;'>A PDF version of your ticket is attached to this email.</p>
                 </div>
             </div>";
     }
