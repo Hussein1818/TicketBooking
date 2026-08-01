@@ -59,6 +59,8 @@ public class LoginQueryHandler : IRequestHandler<LoginQuery, AuthResponseDto>
         {
             Token = token,
             RefreshToken = refreshToken,
+            UserId = user.Id,
+            Username = user.UserName ?? string.Empty,
             Roles = roles
         };
     }
