@@ -34,10 +34,17 @@ public class GetEventsQueryHandler : IRequestHandler<GetEventsQuery, PagedResult
     {
         var cacheKey = $"Events_Page_{request.Page}_Size_{request.PageSize}_Cat_{request.Category ?? "ALL"}";
 
-        var cachedEvents = await _cache.GetStringAsync(cacheKey, cancellationToken);
-        if (!string.IsNullOrEmpty(cachedEvents))
+        try
         {
-            return JsonSerializer.Deserialize<PagedResult<EventDto>>(cachedEvents)!;
+            var cachedEvents = await _cache.GetStringAsync(cacheKey, cancellationToken);
+            if (!string.IsNullOrEmpty(cachedEvents))
+            {
+                var deserializedResult = JsonSerializer.Deserialize<PagedResult<EventDto>>(cachedEvents);
+                if (deserializedResult != null) return deserializedResult;
+            }
+        }
+        catch (Exception)
+        {
         }
 
         var page = Math.Max(1, request.Page);
@@ -45,7 +52,7 @@ public class GetEventsQueryHandler : IRequestHandler<GetEventsQuery, PagedResult
 
         var query = _context.Events.AsNoTracking().AsQueryable();
 
-        if (!string.IsNullOrWhiteSpace(request.Category))
+        if (!string.IsNullOrWhiteSpace(request.Category) && request.Category.ToLower() != "null")
         {
             query = query.Where(e => e.Category.ToLower() == request.Category.ToLower());
         }
@@ -80,12 +87,18 @@ public class GetEventsQueryHandler : IRequestHandler<GetEventsQuery, PagedResult
             PageSize = pageSize
         };
 
-        var cacheOptions = new DistributedCacheEntryOptions
+        try
         {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5)
-        };
-
-        await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(result), cacheOptions, cancellationToken);
+            var cacheOptions = new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5)
+            };
+            await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(result), cacheOptions, cancellationToken);
+        }
+        catch (Exception)
+        {
+           
+        }
 
         return result;
     }
