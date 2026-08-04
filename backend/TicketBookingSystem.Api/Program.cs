@@ -102,7 +102,7 @@ builder.Services.AddHangfire(config => config.UseSqlServerStorage(builder.Config
 builder.Services.AddHangfireServer();
 builder.Services.AddScoped<IJobService, HangfireJobService>();
 builder.Services.AddScoped<ISeatReleaseService, SeatReleaseService>();
-
+builder.Services.AddScoped<IEventCleanupService, EventCleanupService>();
 
 // 5. SECURITY (Authentication, Authorization, Rate Limiting)
 
@@ -152,6 +152,15 @@ using (var scope = app.Services.CreateScope())
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     await AdminSeeder.SeedAdminsAsync(userManager, roleManager, app.Configuration);
+}
+
+using (var scope = app.Services.CreateScope())
+{
+    var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+    recurringJobManager.AddOrUpdate<IEventCleanupService>(
+        "CloseExpiredEventsJob",
+        service => service.CloseExpiredEventsAsync(),
+        Cron.Daily);
 }
 
 app.UseExceptionHandler();
