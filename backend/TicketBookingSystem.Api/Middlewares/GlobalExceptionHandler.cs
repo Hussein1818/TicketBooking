@@ -44,9 +44,9 @@ public class GlobalExceptionHandler : IExceptionHandler
                 httpContext.Request.Path, exception.Message);
         }
 
-        // For 500 errors, do NOT leak internal exception details to the client
+        // Temporary fix to expose the exact error to the frontend developer for debugging
         var detailMessage = statusCode == StatusCodes.Status500InternalServerError
-            ? "An unexpected error occurred. Please try again later."
+            ? $"ERROR: {exception.Message} | INNER: {exception.InnerException?.Message}"
             : exception.Message;
 
         var problemDetails = new ProblemDetails
