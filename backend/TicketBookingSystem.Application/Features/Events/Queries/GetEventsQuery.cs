@@ -50,7 +50,10 @@ public class GetEventsQueryHandler : IRequestHandler<GetEventsQuery, PagedResult
         var page = Math.Max(1, request.Page);
         var pageSize = Math.Clamp(request.PageSize, 1, 100);
 
-        var query = _context.Events.AsNoTracking().AsQueryable();
+        var query = _context.Events
+            .AsNoTracking()
+            .Where(e => e.EventDate >= DateTime.UtcNow && !e.IsClosed)
+            .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(request.Category) && request.Category.ToLower() != "null")
         {
