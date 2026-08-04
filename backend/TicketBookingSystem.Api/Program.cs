@@ -70,6 +70,7 @@ builder.Services.AddScoped<IPricingService, PricingService>();
 
 // 3. INFRASTRUCTURE LAYER (Database, Identity, External Services)
 
+builder.Services.AddDistributedMemoryCache();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
