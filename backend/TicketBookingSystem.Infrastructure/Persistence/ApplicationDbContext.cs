@@ -23,7 +23,7 @@ public class ApplicationDbContext : IdentityDbContext<User>, IApplicationDbConte
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<Order> Orders { get; set; }
     public DbSet<Notification> Notifications { get; set; }
-
+    public DbSet<UserSubscription> UserSubscriptions { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
