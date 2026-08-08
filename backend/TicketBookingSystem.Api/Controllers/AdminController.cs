@@ -27,7 +27,6 @@ public class AdminController : ControllerBase
     {
         var query = new GetAdvancedDashboardQuery
         {
-            // Fix: Use NameIdentifier to get the actual User ID instead of Username
             CurrentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty,
             IsAdmin = User.IsInRole(Roles.Admin)
         };
@@ -48,7 +47,6 @@ public class AdminController : ControllerBase
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> ManageEvent([FromForm] ManageEventCommand command)
     {
-        // Fix: Use NameIdentifier to safely link the event to the correct user ID
         command.CurrentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
         command.IsAdmin = User.IsInRole(Roles.Admin);
 
