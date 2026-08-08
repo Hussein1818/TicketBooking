@@ -45,7 +45,7 @@ public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, s
 
         var user = new User
         {
-            FullName = request.FullName,
+            FullName = string.IsNullOrWhiteSpace(request.FullName) ? request.Username : request.FullName,
             UserName = request.Username,
             Email = request.Email
         };
