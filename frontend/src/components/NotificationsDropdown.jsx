@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Bell, Check, Zap, Info, AlertTriangle } from 'lucide-react';
-import axios from 'axios';
 import useAuthStore from '../store/useAuthStore';
+import { getNotifications, markNotificationRead } from '../services/notificationsApi';
 
 const isTokenUsable = (token) => {
   if (!token) return false;
@@ -33,12 +33,9 @@ export default function NotificationsDropdown() {
         return;
       }
       try {
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://ticketok.runasp.net';
-        const response = await axios.get(`${baseUrl}/api/Notifications`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = Array.isArray(response.data) ? response.data : (response.data.items || response.data.data || []);
-        setNotifications(data);
+        const data = await getNotifications(token);
+        const list = Array.isArray(data) ? data : (data?.items || data?.data || []);
+        setNotifications(list);
       } catch (error) {
         if (error?.response?.status === 401) {
           setNotifications([]);
@@ -64,19 +61,14 @@ export default function NotificationsDropdown() {
   }, []);
 
   const markAsRead = async (id, event) => {
-    event.stopPropagation(); // prevent closing if clicking inside
+    event.stopPropagation();
     if (!isTokenUsable(token)) return;
     try {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://ticketok.runasp.net';
-      await axios.put(`${baseUrl}/api/Notifications/${id}/read`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await markNotificationRead(id, token);
       // Optimistic update
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
     } catch (error) {
-      if (error?.response?.status === 401) {
-        return;
-      }
+      if (error?.response?.status === 401) return;
     }
   };
 

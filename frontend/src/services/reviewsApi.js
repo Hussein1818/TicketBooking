@@ -32,11 +32,11 @@ export const getEventReviews = async (eventId) => {
   return response.data;
 };
 
-export const createReview = async ({ eventId, username, rating, comment }, token) => {
-  // POST /api/Reviews
+// POST /api/Reviews — { eventId, rating, comment }
+export const createReview = async ({ eventId, rating, comment }, token) => {
   const response = await reviewsClient.post(
     "",
-    { eventId: Number(eventId), username, rating: Number(rating), comment },
+    { eventId: Number(eventId), rating: Number(rating), comment },
     authConfig(token)
   );
   return response.data;
