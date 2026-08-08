@@ -33,7 +33,6 @@ public class ConfirmEmailCommandHandler : IRequestHandler<ConfirmEmailCommand, b
         var user = await _userManager.FindByIdAsync(request.UserId);
         if (user == null) throw new BadRequestException("Invalid User ID.");
 
-        // Pure C# Base64Url Decode
         var base64 = request.Token.Replace('-', '+').Replace('_', '/');
         switch (base64.Length % 4)
         {
@@ -77,12 +76,12 @@ public class ResendConfirmationEmailCommandHandler : IRequestHandler<ResendConfi
 
         var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
 
-        // Pure C# Base64Url Encode
         var plainTextBytes = Encoding.UTF8.GetBytes(token);
         var encodedToken = Convert.ToBase64String(plainTextBytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
-        var baseUrl = _configuration["AppUrls:ConfirmEmailEndpoint"];
-        var confirmationLink = $"{baseUrl}?userId={user.Id}&token={encodedToken}";
+        var allowedOrigins = _configuration.GetSection("AllowedOrigins").Get<string[]>();
+        var frontendUrl = _configuration["AppUrls:FrontendBaseUrl"] ?? "http://localhost:5173";
+        var confirmationLink = $"{frontendUrl}/confirm-email?userId={user.Id}&token={encodedToken}";
 
         var emailBody = $"<h3>Welcome back!</h3><p>Please confirm your account by <a href='{confirmationLink}'>clicking here</a>.</p>";
 

@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Linq;
 using System.Text;
@@ -18,19 +19,19 @@ public class RegisterUserCommand : IRequest<string>
     public string Username { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
-
-    public string ClientURI { get; set; } = string.Empty;
 }
 
 public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, string>
 {
     private readonly UserManager<User> _userManager;
     private readonly IEmailService _emailService;
+    private readonly IConfiguration _configuration;
 
-    public RegisterUserCommandHandler(UserManager<User> userManager, IEmailService emailService)
+    public RegisterUserCommandHandler(UserManager<User> userManager, IEmailService emailService, IConfiguration configuration)
     {
         _userManager = userManager;
         _emailService = emailService;
+        _configuration = configuration;
     }
 
     public async Task<string> Handle(RegisterUserCommand request, CancellationToken cancellationToken)
@@ -68,7 +69,11 @@ public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, s
             .Replace('+', '-')
             .Replace('/', '_');
 
-        var confirmationLink = $"{request.ClientURI}?userId={user.Id}&token={encodedToken}";
+      
+        var allowedOrigins = _configuration.GetSection("AllowedOrigins").Get<string[]>();
+        var frontendUrl = _configuration["AppUrls:FrontendBaseUrl"] ?? "http://localhost:5173";
+
+        var confirmationLink = $"{frontendUrl}/confirm-email?userId={user.Id}&token={encodedToken}";
 
         var emailBody = $"<h3>Welcome to Ticket Booking System!</h3><p>Please confirm your account by <a href='{confirmationLink}'>clicking here</a>.</p>";
 
