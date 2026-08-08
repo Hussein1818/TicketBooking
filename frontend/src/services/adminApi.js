@@ -7,12 +7,7 @@ export const adminClient = axios.create({
   baseURL: `${baseUrl}/api/Admin`,
 });
 
-const eventsClient = axios.create({
-  baseURL: `${baseUrl}/api/Events`,
-});
-
 setupInterceptors(adminClient);
-setupInterceptors(eventsClient);
 
 const authHeader = (token) => ({ headers: { Authorization: `Bearer ${token}` } });
 
@@ -36,12 +31,23 @@ export const createStaff = async (payload, token) => {
   return response.data;
 };
 
-export const getEventAnalytics = async (eventId, token) => {
-  const response = await eventsClient.get(`/${eventId}/analytics`, authHeader(token));
+export const manageEvent = async (formData, token) => {
+  const response = await adminClient.post("/manage-event", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+      Authorization: `Bearer ${token}`,
+    },
+  });
   return response.data;
 };
 
-export const deleteEvent = async (eventId, token) => {
-  const response = await eventsClient.delete(`/${eventId}`, authHeader(token));
+export const getLogs = async (page = 1, pageSize = 50, token) => {
+  const response = await adminClient.get("/logs", {
+    params: { page, pageSize },
+    headers: { Authorization: `Bearer ${token}` },
+  });
   return response.data;
 };
+
+// Re-exported from eventsApi to maintain backward compatibility
+export { getEventAnalytics, deleteEvent } from "./eventsApi";

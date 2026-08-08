@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Navigate } from "react-router-dom";
 import {
   Users,
@@ -17,10 +17,12 @@ import {
 import DashboardLayout from "../../layouts/DashboardLayout";
 import useAuthStore from "../../store/useAuthStore";
 import { getAllUsers } from "../../services/adminApi";
+import { assignOrganizer, revokeOrganizer } from "../../services/authApi";
 
 const ROLE_STYLES = {
   Admin: "bg-violet-500/15 text-violet-300 border border-violet-500/30",
   Staff: "bg-blue-500/15 text-blue-300 border border-blue-500/30",
+  Organizer: "bg-amber-500/15 text-amber-300 border border-amber-500/30",
   User: "bg-zinc-700/50 text-zinc-300 border border-zinc-600/40",
 };
 
@@ -47,8 +49,9 @@ export default function UsersManagementPage() {
   const [sortField, setSortField] = useState("username");
   const [sortDir, setSortDir] = useState("asc");
   const [roleFilter, setRoleFilter] = useState("All");
+  const [organizerLoading, setOrganizerLoading] = useState({});
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -63,18 +66,32 @@ export default function UsersManagementPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     if (token && isAdmin) fetchUsers();
     else setLoading(false);
-  }, [token, isAdmin]);
-
-  if (!isAdmin) return <Navigate to="/" replace />;
+  }, [token, isAdmin, fetchUsers]);
 
   const handleSort = (field) => {
     if (sortField === field) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else { setSortField(field); setSortDir("asc"); }
+  };
+
+  const handleOrganizerToggle = async (userId, isOrganizer) => {
+    setOrganizerLoading((prev) => ({ ...prev, [userId]: true }));
+    try {
+      if (isOrganizer) {
+        await revokeOrganizer(userId);
+      } else {
+        await assignOrganizer(userId);
+      }
+      await fetchUsers();
+    } catch (err) {
+      console.error("Failed to toggle organizer role:", err);
+    } finally {
+      setOrganizerLoading((prev) => ({ ...prev, [userId]: false }));
+    }
   };
 
   const SortIcon = ({ field }) =>
@@ -136,23 +153,32 @@ export default function UsersManagementPage() {
     }).length,
   }), [users]);
 
+  if (!isAdmin) return <Navigate to="/" replace />;
+
   return (
     <DashboardLayout>
-      <div className="mx-auto max-w-7xl space-y-6 pb-12">
+      {/* Ambient Lighting */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute top-[10%] left-[-10%] w-[500px] h-[500px] bg-[#0F766E]/15 blur-[150px] rounded-full mix-blend-screen" />
+        <div className="absolute top-[40%] right-[-10%] w-[700px] h-[700px] bg-[#14B8A6]/10 blur-[150px] rounded-full mix-blend-screen" />
+        <div className="absolute bottom-[-10%] left-[20%] w-[600px] h-[600px] bg-[#0F766E]/15 blur-[180px] rounded-full mix-blend-screen" />
+      </div>
+
+      <div className="relative z-10 mx-auto max-w-7xl space-y-8 pb-12 px-4 animate-in fade-in slide-in-from-bottom-4 duration-700 mt-8">
 
         {/* ── Header ── */}
-        <div className="flex flex-col gap-4 rounded-xl border border-white/5 bg-[#16171a] p-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-6 rounded-[2.5rem] border border-white/5 bg-white/[0.02] backdrop-blur-xl p-8 shadow-lg sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="flex items-center gap-3 text-2xl font-bold text-white">
-              <Users className="h-6 w-6 text-teal-400" />
-              Users Management
+            <h1 className="flex items-center gap-4 text-4xl font-bold tracking-tighter text-white drop-shadow-md">
+              <Users className="h-10 w-10 text-[#14B8A6]" />
+              Users <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#14B8A6] to-[#0F766E]">Management</span>
             </h1>
-            <p className="mt-1 text-sm text-zinc-400">All registered accounts on the platform</p>
+            <p className="mt-2 text-sm text-zinc-400 leading-relaxed">All registered accounts on the platform</p>
           </div>
           <button
             onClick={fetchUsers}
             disabled={loading}
-            className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#1e1f23] px-4 py-2 text-sm text-zinc-300 transition hover:border-teal-400/40 hover:text-white disabled:opacity-60"
+            className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-6 py-3 text-xs font-bold uppercase tracking-widest text-zinc-300 transition hover:border-[#14B8A6]/40 hover:text-white disabled:opacity-60 hover:bg-white/10"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
@@ -162,31 +188,33 @@ export default function UsersManagementPage() {
         {/* ── Stats Cards ── */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {[
-            { label: "Total Users", value: stats.total, icon: Users, color: "text-teal-400" },
+            { label: "Total Users", value: stats.total, icon: Users, color: "text-[#14B8A6]" },
             { label: "Admins", value: stats.admins, icon: Shield, color: "text-violet-400" },
             { label: "Staff", value: stats.staff, icon: UserCheck, color: "text-blue-400" },
             { label: "Regular", value: stats.regular, icon: UserX, color: "text-zinc-400" },
-          ].map(({ label, value, icon: Icon, color }) => (
-            <div key={label} className="rounded-xl border border-white/5 bg-[#16171a] p-4">
-              <div className="mb-2 flex items-center gap-2">
+          ].map(
+            // eslint-disable-next-line no-unused-vars
+            ({ label, value, icon: Icon, color }) => (
+            <div key={label} className="rounded-2xl border border-white/5 bg-white/[0.02] backdrop-blur-xl p-5 shadow-lg transition-transform hover:-translate-y-1 hover:bg-white/[0.04] duration-300">
+              <div className="mb-3 flex items-center gap-2">
                 <Icon className={`h-4 w-4 ${color}`} />
-                <p className="text-xs uppercase tracking-wider text-zinc-500">{label}</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">{label}</p>
               </div>
-              <p className="text-2xl font-semibold text-white">{loading ? "—" : value}</p>
+              <p className="text-3xl font-bold text-white drop-shadow-sm">{loading ? "—" : value}</p>
             </div>
           ))}
         </div>
 
         {/* ── Filters ── */}
-        <div className="flex flex-col gap-3 rounded-xl border border-white/5 bg-[#16171a] p-4 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-4 rounded-[2rem] border border-white/5 bg-white/[0.02] backdrop-blur-xl p-6 shadow-lg sm:flex-row sm:items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
             <input
               type="text"
               placeholder="Search by username, email or ID..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-lg border border-white/5 bg-[#111214] py-2.5 pl-9 pr-4 text-sm text-white placeholder-zinc-500 focus:border-teal-400/40 focus:outline-none focus:ring-1 focus:ring-teal-400/30"
+              className="w-full rounded-2xl border border-white/10 bg-black/40 py-3.5 pl-12 pr-4 text-sm text-white placeholder-zinc-500 focus:border-[#14B8A6]/40 focus:outline-none transition-all shadow-inner"
             />
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -194,10 +222,10 @@ export default function UsersManagementPage() {
               <button
                 key={r}
                 onClick={() => setRoleFilter(r)}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                className={`rounded-full px-5 py-2 text-xs font-bold uppercase tracking-wider transition-all ${
                   roleFilter === r
-                    ? "bg-teal-400 text-black"
-                    : "border border-white/10 bg-[#1e1f23] text-zinc-400 hover:text-white"
+                    ? "bg-[#14B8A6] text-black shadow-[0_0_15px_rgba(20,184,166,0.3)]"
+                    : "border border-white/10 bg-black/40 text-zinc-400 hover:text-white hover:border-white/20"
                 }`}
               >
                 {r}
@@ -207,50 +235,51 @@ export default function UsersManagementPage() {
         </div>
 
         {/* ── Table ── */}
-        <div className="overflow-hidden rounded-xl border border-white/5 bg-[#16171a]">
+        <div className="overflow-hidden rounded-[2.5rem] border border-white/5 bg-white/[0.02] backdrop-blur-xl shadow-2xl">
           {loading ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-teal-400" />
-              <p className="text-sm text-zinc-400">Loading users...</p>
+            <div className="flex flex-col items-center justify-center gap-3 py-24">
+              <Loader2 className="h-10 w-10 animate-spin text-[#14B8A6]" />
+              <p className="text-sm font-bold uppercase tracking-widest text-zinc-500">Loading users...</p>
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-20">
-              <AlertCircle className="h-8 w-8 text-red-400" />
-              <p className="text-sm text-red-400">{error}</p>
+            <div className="flex flex-col items-center justify-center gap-4 py-24">
+              <AlertCircle className="h-10 w-10 text-red-400" />
+              <p className="text-sm text-red-400 font-medium">{error}</p>
               <button
                 onClick={fetchUsers}
-                className="mt-2 rounded-lg bg-teal-400/10 px-4 py-2 text-sm text-teal-400 hover:bg-teal-400/20"
+                className="mt-2 rounded-full bg-red-500/10 px-6 py-2 text-xs font-bold uppercase tracking-widest text-red-400 hover:bg-red-500/20 transition-colors"
               >
                 Try Again
               </button>
             </div>
           ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-20">
-              <Users className="h-8 w-8 text-zinc-600" />
-              <p className="text-sm text-zinc-500">No users found.</p>
+            <div className="flex flex-col items-center justify-center gap-4 py-24">
+              <Users className="h-10 w-10 text-zinc-600" />
+              <p className="text-sm font-bold uppercase tracking-widest text-zinc-500">No users found.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-white/5 bg-[#111214]">
+                  <tr className="border-b border-white/5 bg-black/20">
                     {[
                       { key: "id", label: "#" },
                       { key: "username", label: "Username", icon: User },
                       { key: "email", label: "Email", icon: Mail },
                       { key: "roles", label: "Role" },
+                      { key: "actions", label: "Actions" },
                     ].map(({ key, label, icon: Icon }) => (
                       <th
                         key={key}
-                        onClick={() => key !== "roles" && handleSort(key)}
+                        onClick={() => key !== "roles" && key !== "actions" && handleSort(key)}
                         className={`px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-zinc-400 ${
-                          key !== "roles" ? "cursor-pointer hover:text-white select-none" : ""
+                          key !== "roles" && key !== "actions" ? "cursor-pointer hover:text-white select-none" : ""
                         }`}
                       >
                         <span className="flex items-center gap-1.5">
                           {Icon && <Icon className="h-3.5 w-3.5" />}
                           {label}
-                          {key !== "roles" && <SortIcon field={key} />}
+                          {key !== "roles" && key !== "actions" && <SortIcon field={key} />}
                         </span>
                       </th>
                     ))}
@@ -268,19 +297,46 @@ export default function UsersManagementPage() {
                         key={user.id ?? idx}
                         className="group transition-colors hover:bg-white/[0.03]"
                       >
-                        <td className="px-5 py-3.5 font-mono text-xs text-zinc-500">
+                        <td className="px-5 py-4 font-mono text-xs text-zinc-500">
                           {user.id ?? idx + 1}
                         </td>
-                        <td className="px-5 py-3.5">
+                        <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-teal-400/10 text-xs font-bold text-teal-400">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#14B8A6]/10 border border-[#14B8A6]/20 text-xs font-bold text-[#14B8A6]">
                               {user.username?.[0]?.toUpperCase() ?? "?"}
                             </div>
-                            <span className="font-medium text-white">{user.username ?? "—"}</span>
+                            <span className="font-bold text-white drop-shadow-sm">{user.username ?? "—"}</span>
                           </div>
                         </td>
-                        <td className="px-5 py-3.5 text-zinc-400">{user.email ?? "—"}</td>
-                        <td className="px-5 py-3.5">{getRoleBadge(roles)}</td>
+                        <td className="px-5 py-4 text-zinc-400">{user.email ?? "—"}</td>
+                        <td className="px-5 py-4">{getRoleBadge(roles)}</td>
+                        <td className="px-5 py-4">
+                          {!roles.includes("Admin") && !roles.includes("Staff") && (
+                            <button
+                              onClick={() => handleOrganizerToggle(user.id, roles.includes("Organizer"))}
+                              disabled={organizerLoading[user.id]}
+                              className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-all disabled:opacity-50 ${
+                                roles.includes("Organizer")
+                                  ? "bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-red-500/15 hover:text-red-300 hover:border-red-500/30"
+                                  : "bg-[#14B8A6]/10 text-[#14B8A6] border border-[#14B8A6]/20 hover:bg-[#14B8A6]/20"
+                              }`}
+                            >
+                              {organizerLoading[user.id] ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : roles.includes("Organizer") ? (
+                                <>
+                                  <UserX className="h-3.5 w-3.5" />
+                                  Revoke
+                                </>
+                              ) : (
+                                <>
+                                  <UserCheck className="h-3.5 w-3.5" />
+                                  Organizer
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
@@ -288,10 +344,10 @@ export default function UsersManagementPage() {
               </table>
 
               {/* ── Footer count ── */}
-              <div className="border-t border-white/5 px-5 py-3">
-                <p className="text-xs text-zinc-500">
-                  Showing <span className="text-zinc-300">{filtered.length}</span> of{" "}
-                  <span className="text-zinc-300">{users.length}</span> users
+              <div className="border-t border-white/5 bg-black/20 px-8 py-5">
+                <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">
+                  Showing <span className="text-white">{filtered.length}</span> of{" "}
+                  <span className="text-white">{users.length}</span> users
                 </p>
               </div>
             </div>

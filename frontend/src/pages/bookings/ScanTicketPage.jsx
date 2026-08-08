@@ -6,10 +6,8 @@ import { getErrorMessage, scanQr } from "../../services/bookingsApi";
 
 export default function ScanTicketPage() {
   const token = useAuthStore((state) => state.token);
-  const user = useAuthStore((state) => state.user);
-  const defaultScanner = user?.username || user?.userName || "";
 
-  const [formData, setFormData] = useState({ qrData: "", scannedByUsername: defaultScanner });
+  const [qrData, setQrData] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState("");
@@ -20,7 +18,7 @@ export default function ScanTicketPage() {
     setError("");
     setResult("");
     try {
-      const data = await scanQr(formData, token);
+      const data = await scanQr(qrData, token);
       setResult(typeof data === "string" ? data : JSON.stringify(data));
     } catch (submitError) {
       setError(getErrorMessage(submitError, "Scan failed."));
@@ -34,17 +32,9 @@ export default function ScanTicketPage() {
       <div className="mx-auto max-w-3xl rounded-xl border border-white/5 bg-[#16171a] p-8">
         <h1 className="mb-6 flex items-center gap-3 text-2xl font-bold text-white"><ScanLine className="h-6 w-6 text-teal-400" />Scan Ticket</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="text"
-            value={formData.scannedByUsername}
-            onChange={(e) => setFormData((prev) => ({ ...prev, scannedByUsername: e.target.value }))}
-            placeholder="Scanner username"
-            className="w-full rounded-lg border border-white/10 bg-[#0f1013] px-4 py-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500/50"
-            required
-          />
           <textarea
-            value={formData.qrData}
-            onChange={(e) => setFormData((prev) => ({ ...prev, qrData: e.target.value }))}
+            value={qrData}
+            onChange={(e) => setQrData(e.target.value)}
             placeholder="Paste qrData..."
             className="min-h-32 w-full rounded-lg border border-white/10 bg-[#0f1013] p-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500/50"
             required

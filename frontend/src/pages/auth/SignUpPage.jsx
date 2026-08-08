@@ -1,7 +1,7 @@
 import { Loader2, CheckCircle, User, Mail, Lock, Zap } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
-import axios from 'axios';
+import { register } from '../../services/authApi';
 import AuthLayout from '../../layouts/AuthLayout';
 import logoUrl from '../../assets/logo.png';
 
@@ -36,14 +36,13 @@ export default function SignUpPage() {
 
     setLoading(true);
     try {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://ticketok.runasp.net';
-      await axios.post(`${baseUrl}/api/Auth/register`, {
+      await register({
         username: formData.username,
         email: formData.email,
         password: formData.password
       });
 
-      setSuccess('Account created successfully! Redirecting to login...');
+      setSuccess('Registration successful! Redirecting to login...');
       setFormData({ username: '', email: '', password: '', confirmPassword: '' });
       setTimeout(() => navigate('/signin'), 1500);
     } catch (err) {

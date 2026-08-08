@@ -1,7 +1,7 @@
 import { Loader2, CheckCircle, User, Lock, EyeOff, Zap } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
-import axios from 'axios';
+import { login as loginApi } from '../../services/authApi';
 import AuthLayout from '../../layouts/AuthLayout';
 import useAuthStore from '../../store/useAuthStore';
 import logoUrl from '../../assets/logo.png';
@@ -10,7 +10,9 @@ import LiquidEther from '../../components/LiquidEther';
 
 export default function SignInPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const login = useAuthStore((state) => state.login);
+  const from = location.state?.from || '/';
   const [formData, setFormData] = useState({ username: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -27,17 +29,20 @@ export default function SignInPage() {
     setSuccess('');
     setLoading(true);
     try {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://ticketok.runasp.net';
-      const response = await axios.post(`${baseUrl}/api/Auth/login`, {
-        usernameOrEmail: formData.username,
-        password: formData.password
-      });
+      const response = await loginApi(formData.username, formData.password);
+      console.log("Login Response from Backend:", response);
+      
+      // If the backend returns roles at the root of the response instead of inside response.user
+      let userObj = response.user;
+      if (!userObj && (response.roles || response.role || response.Roles || response.Role)) {
+         userObj = { roles: response.roles || response.Roles, role: response.role || response.Role, ...response };
+      }
 
-      login(response.data.accessToken || response.data.token, response.data.user, response.data.refreshToken);
+      login(response.accessToken || response.token, userObj || response, response.refreshToken);
 
       setSuccess('Login successful! Redirecting...');
-      setTimeout(() => navigate('/'), 1500);
-    } catch (err) {
+      setTimeout(() => navigate(from, { replace: true }), 1500);
+    } catch {
       setError('Invalid email or password');
     } finally {
       setLoading(false);
