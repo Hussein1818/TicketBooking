@@ -177,4 +177,15 @@ public class BookingsController : ControllerBase
 
         return Ok(new { Message = "Booking confirmed.", PaymentUrl = paymentUrl });
     }
+    [Authorize]
+    [HttpGet("{bookingId}/download")]
+    public async Task<IActionResult> DownloadTicket(int bookingId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var result = await _mediator.Send(new DownloadTicketQuery { BookingId = bookingId, UserId = userId });
+
+        return File(result.FileData, result.ContentType, result.FileName);
+    }
 }
