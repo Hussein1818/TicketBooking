@@ -1,12 +1,12 @@
-﻿using TicketBookingSystem.Application.Interfaces;
-using TicketBookingSystem.Domain.Entities;
-using MediatR;
+﻿using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using TicketBookingSystem.Application.Interfaces;
+using TicketBookingSystem.Domain.Entities;
 
 namespace TicketBookingSystem.Application.Features.Auth.Commands;
 
@@ -32,22 +32,20 @@ public class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswordComman
     {
         var user = await _userManager.FindByEmailAsync(request.Email);
 
-        if (user == null || !(await _userManager.IsEmailConfirmedAsync(user)))
+        if (user == null || !await _userManager.IsEmailConfirmedAsync(user))
             return true;
 
         var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 
-        // Pure C# Base64Url Encode
         var plainTextBytes = Encoding.UTF8.GetBytes(token);
         var encodedToken = Convert.ToBase64String(plainTextBytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
-        // Read base URL from appsettings
-        var baseUrl = _configuration["AppUrls:ResetPasswordEndpoint"];
-        var resetLink = $"{baseUrl}?email={user.Email}&token={encodedToken}";
+        var allowedOrigins = _configuration.GetSection("AllowedOrigins").Get<string[]>();
+        var frontendUrl = _configuration["AppUrls:FrontendBaseUrl"] ?? "http://localhost:5173";
+        var resetLink = $"{frontendUrl}/reset-password?email={request.Email}&token={encodedToken}";
 
-        var emailBody = $"<h3>Reset Your Password</h3><p>We received a password reset request. Please reset your password by <a href='{resetLink}'>clicking here</a>.</p>";
-
-        await _emailService.SendEmailAsync(user.Email!, "Reset Password", emailBody);
+        var emailBody = $"<h3>Reset Password</h3><p>Please reset your password by <a href='{resetLink}'>clicking here</a>.</p>";
+        await _emailService.SendEmailAsync(user.Email!, "Reset Your Password - Ticket Booking", emailBody);
 
         return true;
     }
