@@ -20,14 +20,12 @@ public class FanIdPdfService : IFanIdPdfService
 
     public Task<byte[]> GenerateFanIdPdfAsync(string fullName, string fanIdNumber, string nationalId, string profilePicPath)
     {
-        
         string qrContent = $"FANID|{fanIdNumber}|{nationalId}";
         using var qrGenerator = new QRCodeGenerator();
         var qrCodeData = qrGenerator.CreateQrCode(qrContent, QRCodeGenerator.ECCLevel.Q);
         var qrCode = new PngByteQRCode(qrCodeData);
         byte[] qrCodeImage = qrCode.GetGraphic(20);
 
-        
         byte[] profileImage = System.Array.Empty<byte>();
         var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
 
@@ -44,19 +42,18 @@ public class FanIdPdfService : IFanIdPdfService
 
         QuestPDF.Settings.License = LicenseType.Community;
 
-        
         var document = Document.Create(container =>
         {
             container.Page(page =>
             {
-                page.Size(PageSizes.A6.Portrait()); 
+                page.Size(PageSizes.A6.Portrait());
                 page.Margin(15);
                 page.PageColor(Colors.White);
+
                 page.DefaultTextStyle(x => x.FontSize(10).FontFamily(Fonts.Arial));
 
                 page.Content().Column(column =>
                 {
-                   
                     column.Item().Background(Colors.Blue.Darken2).Padding(10).AlignCenter()
                           .Text("OFFICIAL FAN ID").FontSize(14).Bold().FontColor(Colors.White);
 
@@ -79,6 +76,8 @@ public class FanIdPdfService : IFanIdPdfService
             });
         });
 
-        return Task.FromResult(document.GeneratePdf());
+        using var stream = new MemoryStream();
+        document.GeneratePdf(stream);
+        return Task.FromResult(stream.ToArray());
     }
 }

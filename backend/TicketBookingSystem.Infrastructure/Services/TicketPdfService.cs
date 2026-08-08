@@ -4,6 +4,7 @@ using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using System;
+using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -22,9 +23,9 @@ public class TicketPdfService : ITicketPdfService
 
     public Task<byte[]> GenerateTicketPdfAsync(string eventName, string venue, string date, string seatNumber, string username, int seatId)
     {
-        // SEC-07: Use a dedicated HMAC key for QR codes, separate from JWT signing key
         var secretKey = _configuration["QrCode:HmacKey"]
             ?? throw new InvalidOperationException("QrCode:HmacKey is not configured. Cannot generate secure ticket QR codes.");
+
         var rawData = $"TICKET|{seatId}|{username.ToLower()}";
 
         using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secretKey));
@@ -45,20 +46,20 @@ public class TicketPdfService : ITicketPdfService
                 page.Size(PageSizes.A5.Landscape());
                 page.Margin(20);
                 page.PageColor(Colors.White);
+
                 page.DefaultTextStyle(x => x.FontSize(12).FontFamily(Fonts.Arial));
 
                 page.Content().Row(row =>
                 {
                     row.RelativeItem(2).Background(Colors.Grey.Lighten4).Padding(20).Column(column =>
                     {
-                        
                         column.Item().Text($"{venue.ToUpper()} TICKET").FontSize(24).Bold().FontColor(Colors.Blue.Darken2);
                         column.Item().PaddingVertical(10).LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
 
                         column.Item().Text("Event:").SemiBold().FontColor(Colors.Grey.Darken2);
                         column.Item().PaddingBottom(10).Text(eventName).FontSize(18).Bold();
 
-                        column.Item().Text("Date:").SemiBold().FontColor(Colors.Grey.Darken2); 
+                        column.Item().Text("Date:").SemiBold().FontColor(Colors.Grey.Darken2);
                         column.Item().PaddingBottom(10).Text($"{date}");
 
                         column.Item().Text("Attendee:").SemiBold().FontColor(Colors.Grey.Darken2);
@@ -78,6 +79,8 @@ public class TicketPdfService : ITicketPdfService
             });
         });
 
-        return Task.FromResult(document.GeneratePdf());
+        using var stream = new MemoryStream();
+        document.GeneratePdf(stream);
+        return Task.FromResult(stream.ToArray());
     }
 }
