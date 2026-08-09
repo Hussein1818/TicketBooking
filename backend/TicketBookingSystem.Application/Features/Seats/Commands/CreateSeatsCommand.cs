@@ -1,12 +1,16 @@
 ﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
-using TicketBookingSystem.Application.Interfaces;
-using TicketBookingSystem.Domain.Entities;
-using TicketBookingSystem.Domain.Enums;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using TicketBookingSystem.Application.Exceptions;
+using TicketBookingSystem.Application.Interfaces;
+using TicketBookingSystem.Domain.Constants;
+using TicketBookingSystem.Domain.Entities;
+using TicketBookingSystem.Domain.Enums;
 
 namespace TicketBookingSystem.Application.Features.Seats.Commands;
 
@@ -16,6 +20,12 @@ public class CreateSeatsCommand : IRequest<int>
     public int RegularSeatsCount { get; set; }
     public int VipSeatsCount { get; set; }
     public decimal PricePerSeat { get; set; }
+
+    [JsonIgnore]
+    public string CurrentUserId { get; set; } = string.Empty;
+
+    [JsonIgnore]
+    public bool IsAdmin { get; set; }
 }
 
 public class CreateSeatsCommandHandler : IRequestHandler<CreateSeatsCommand, int>
@@ -34,11 +44,13 @@ public class CreateSeatsCommandHandler : IRequestHandler<CreateSeatsCommand, int
         var ev = await _context.Events.FirstOrDefaultAsync(e => e.Id == request.EventId, cancellationToken);
 
         if (ev == null)
-        {
-            throw new TicketBookingSystem.Application.Exceptions.NotFoundException(nameof(Event), request.EventId);
-        }
+            throw new NotFoundException(nameof(Event), request.EventId);
+
+        if (!request.IsAdmin && ev.OrganizerId != request.CurrentUserId)
+            throw new UnauthorizedAccessException("You do not have permission to add seats to this event.");
 
         var currentSeatsCount = await _context.Seats.CountAsync(s => s.EventId == request.EventId, cancellationToken);
+
         var seats = new List<Seat>();
 
         for (int i = 1; i <= request.VipSeatsCount; i++)
@@ -47,7 +59,7 @@ public class CreateSeatsCommandHandler : IRequestHandler<CreateSeatsCommand, int
             seats.Add(new Seat
             {
                 EventId = request.EventId,
-                SeatNumber = $"VIP-{ev.Id}-{currentSeatsCount}",
+                SeatNumber = $"{AppConstants.SeatPrefixes.VIP}-{ev.Id}-{currentSeatsCount}",
                 Price = request.PricePerSeat * 2,
                 Status = SeatStatus.Available
             });
@@ -59,7 +71,7 @@ public class CreateSeatsCommandHandler : IRequestHandler<CreateSeatsCommand, int
             seats.Add(new Seat
             {
                 EventId = request.EventId,
-                SeatNumber = $"REG-{ev.Id}-{currentSeatsCount}",
+                SeatNumber = $"{AppConstants.SeatPrefixes.Regular}-{ev.Id}-{currentSeatsCount}",
                 Price = request.PricePerSeat,
                 Status = SeatStatus.Available
             });
@@ -89,6 +101,6 @@ public class CreateSeatsCommandHandler : IRequestHandler<CreateSeatsCommand, int
             await _context.SaveChangesAsync(cancellationToken);
         }
 
-        return seats.Count;
+        return totalNewSeats;
     }
 }

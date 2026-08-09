@@ -1,22 +1,17 @@
-﻿using MediatR;
+﻿using TicketBookingSystem.Application.DTOs.Auth;
+using TicketBookingSystem.Application.Exceptions;
+using TicketBookingSystem.Application.Interfaces;
+using TicketBookingSystem.Domain.Entities;
+using MediatR;
 using Microsoft.AspNetCore.Identity;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using TicketBookingSystem.Application.Interfaces;
-using TicketBookingSystem.Domain.Entities;
 
 namespace TicketBookingSystem.Application.Features.Auth.Queries;
 
-public class AuthResponseDto
-{
-    public string Token { get; set; } = string.Empty;
-    public string RefreshToken { get; set; } = string.Empty;
-}
-
 public class LoginQuery : IRequest<AuthResponseDto>
 {
-    
     public string UsernameOrEmail { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
 }
@@ -36,8 +31,7 @@ public class LoginQueryHandler : IRequestHandler<LoginQuery, AuthResponseDto>
     {
         User? user = null;
 
-        
-        if (request.UsernameOrEmail.Contains("@"))
+        if (request.UsernameOrEmail.Contains('@'))
         {
             user = await _userManager.FindByEmailAsync(request.UsernameOrEmail);
         }
@@ -47,23 +41,27 @@ public class LoginQueryHandler : IRequestHandler<LoginQuery, AuthResponseDto>
         }
 
         if (user == null || !await _userManager.CheckPasswordAsync(user, request.Password))
-            throw new UnauthorizedAccessException("Invalid credentials.");
+            throw new BadRequestException("Invalid credentials.");
 
         if (!await _userManager.IsEmailConfirmedAsync(user))
-            throw new UnauthorizedAccessException("Please confirm your email before logging in.");
+            throw new BadRequestException("Please confirm your email before logging in.");
 
-        var token = _tokenService.GenerateToken(user);
+        var roles = await _userManager.GetRolesAsync(user);
+
+        var token = _tokenService.GenerateToken(user, roles);
         var refreshToken = _tokenService.GenerateRefreshToken();
 
         user.RefreshToken = refreshToken;
         user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
-
         await _userManager.UpdateAsync(user);
 
         return new AuthResponseDto
         {
             Token = token,
-            RefreshToken = refreshToken
+            RefreshToken = refreshToken,
+            UserId = user.Id,
+            Username = user.UserName ?? string.Empty,
+            Roles = roles
         };
     }
 }

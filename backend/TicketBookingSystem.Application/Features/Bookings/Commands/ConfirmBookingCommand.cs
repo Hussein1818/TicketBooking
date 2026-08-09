@@ -1,20 +1,24 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using TicketBookingSystem.Application.Interfaces;
-using TicketBookingSystem.Domain.Enums;
 using System;
 using System.Linq;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using TicketBookingSystem.Application.Interfaces;
+using TicketBookingSystem.Domain.Constants;
+using TicketBookingSystem.Domain.Enums;
 
 namespace TicketBookingSystem.Application.Features.Bookings.Commands;
 
 public class ConfirmBookingCommand : IRequest<string>
 {
     public int SeatId { get; set; }
+
+    [JsonIgnore]
     public string UserId { get; set; } = string.Empty;
     public string? PromoCode { get; set; }
-    public string TargetCurrency { get; set; } = "EGP";
+    public string TargetCurrency { get; set; } = AppConstants.DefaultCurrency;
 }
 
 public class ConfirmBookingCommandHandler : IRequestHandler<ConfirmBookingCommand, string>
@@ -39,7 +43,6 @@ public class ConfirmBookingCommandHandler : IRequestHandler<ConfirmBookingComman
     public async Task<string> Handle(ConfirmBookingCommand request, CancellationToken cancellationToken)
     {
         var seat = await _context.Seats.FindAsync(new object[] { request.SeatId }, cancellationToken);
-
         if (seat == null || seat.Status != SeatStatus.Locked)
             return string.Empty;
 
@@ -54,13 +57,12 @@ public class ConfirmBookingCommandHandler : IRequestHandler<ConfirmBookingComman
         if (userBooking == null || user == null)
             return string.Empty;
 
-        // Use centralized pricing service for discount calculation
         var pricing = await _pricingService.CalculateDiscountedPriceAsync(
             seat.Price, user, request.PromoCode, cancellationToken);
 
-        string currency = string.IsNullOrWhiteSpace(request.TargetCurrency) ? "EGP" : request.TargetCurrency.ToUpper();
-        decimal toTargetRate = await _currencyConverter.GetExchangeRateAsync("EGP", currency);
-        decimal toEgpRate = await _currencyConverter.GetExchangeRateAsync(currency, "EGP");
+        string currency = string.IsNullOrWhiteSpace(request.TargetCurrency) ? AppConstants.DefaultCurrency : request.TargetCurrency.ToUpper();
+        decimal toTargetRate = await _currencyConverter.GetExchangeRateAsync(AppConstants.DefaultCurrency, currency);
+        decimal toEgpRate = await _currencyConverter.GetExchangeRateAsync(currency, AppConstants.DefaultCurrency);
 
         decimal finalPriceInTargetCurrency = Math.Round(pricing.FinalPriceEgp * toTargetRate, 2);
 
@@ -74,4 +76,4 @@ public class ConfirmBookingCommandHandler : IRequestHandler<ConfirmBookingComman
 
         return paymentUrl;
     }
-}
+}

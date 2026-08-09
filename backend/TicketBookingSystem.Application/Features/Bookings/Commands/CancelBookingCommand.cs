@@ -1,19 +1,22 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
+using System;
+using System.Linq;
+using System.Text.Json.Serialization;
+using System.Threading;
+using System.Threading.Tasks;
 using TicketBookingSystem.Application.Interfaces;
 using TicketBookingSystem.Domain.Entities;
 using TicketBookingSystem.Domain.Enums;
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace TicketBookingSystem.Application.Features.Bookings.Commands;
 
 public class CancelBookingCommand : IRequest<bool>
 {
     public int BookingId { get; set; }
+
+    [JsonIgnore]
     public string UserId { get; set; } = string.Empty;
 }
 
@@ -45,52 +48,50 @@ public class CancelBookingCommandHandler : IRequestHandler<CancelBookingCommand,
 
         if (booking == null) return false;
 
-        if (booking.Seat.Event.EventDate <= DateTime.UtcNow || booking.Seat.Event.IsClosed)
-            return false;
-
-        booking.Seat.Status = SeatStatus.Available;
         var eventId = booking.Seat.EventId;
         var eventName = booking.Seat.Event.Name;
 
-        var userToRefund = await _context.Users.FirstOrDefaultAsync(u => u.UserName == request.UserId, cancellationToken);
-
-        decimal refundAmount = 0;
-        if (userToRefund != null)
+        if (booking.Seat.Status == SeatStatus.Booked)
         {
-            var eventEntity = booking.Seat.Event;
-            var timeUntilEvent = eventEntity.EventDate - DateTime.UtcNow;
+            var daysUntilEvent = (booking.Seat.Event.EventDate - DateTime.UtcNow).TotalDays;
+            decimal refundAmount = 0;
 
-            if (timeUntilEvent.TotalDays >= eventEntity.FullRefundDays)
+            if (daysUntilEvent >= booking.Seat.Event.FullRefundDays)
             {
                 refundAmount = booking.AmountPaid;
             }
-            else if (timeUntilEvent.TotalDays >= eventEntity.PartialRefundDays)
+            else if (daysUntilEvent >= booking.Seat.Event.PartialRefundDays)
             {
-                refundAmount = booking.AmountPaid * (eventEntity.PartialRefundPercentage / 100m);
+                refundAmount = booking.AmountPaid * (booking.Seat.Event.PartialRefundPercentage / 100m);
             }
 
             if (refundAmount > 0)
             {
-                userToRefund.AddFunds(refundAmount);
-            }
-
-            // EDGE-06: Revert loyalty points earned from this booking to prevent gaming
-            int pointsToRevert = (int)(refundAmount / 10);
-            if (pointsToRevert > 0)
-            {
-                userToRefund.DeductLoyaltyPoints(pointsToRevert);
-                _context.AuditLogs.Add(new AuditLog
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
+                if (user != null)
                 {
-                    Username = request.UserId,
-                    Action = "Loyalty Points Reverted",
-                    Details = $"Reverted {pointsToRevert} points due to booking cancellation (Booking #{request.BookingId})."
-                });
+                    user.AddFunds(refundAmount);
+
+                    if (booking.AmountPaid > 0)
+                    {
+                        int pointsToDeduct = (int)(booking.AmountPaid / 10);
+                        user.DeductLoyaltyPoints(pointsToDeduct);
+                    }
+
+                    _context.AuditLogs.Add(new AuditLog
+                    {
+                        Username = user.UserName ?? string.Empty,
+                        Action = "Refund Issued",
+                        Details = $"Refunded {refundAmount} to wallet for Booking {booking.Id}. Deducted loyalty points."
+                    });
+                }
             }
         }
 
+        booking.Seat.Status = SeatStatus.Available;
         _context.Bookings.Remove(booking);
-        
-        try 
+
+        try
         {
             await _context.SaveChangesAsync(cancellationToken);
         }
@@ -112,7 +113,6 @@ public class CancelBookingCommandHandler : IRequestHandler<CancelBookingCommand,
         if (waitlistUser != null)
         {
             string alertMessage = $"A ticket just became available for {eventName} due to a cancellation. Hurry and book it now!";
-
             await _emailService.SendEmailAsync(waitlistUser.Email, "Ticket Available!", alertMessage);
 
             var notification = new Notification

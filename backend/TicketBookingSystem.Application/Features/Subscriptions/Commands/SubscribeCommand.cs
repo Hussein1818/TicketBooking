@@ -1,21 +1,27 @@
 ﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using TicketBookingSystem.Application.DTOs.Subscriptions;
 using TicketBookingSystem.Application.Interfaces;
+using TicketBookingSystem.Domain.Entities;
 using TicketBookingSystem.Domain.Enums;
 
 namespace TicketBookingSystem.Application.Features.Subscriptions.Commands;
 
-public class SubscribeCommand : IRequest<bool>
+public class SubscribeCommand : IRequest<SubscriptionResultDto?>
 {
+    [JsonIgnore]
     public string UserId { get; set; } = string.Empty;
+
     public SubscriptionTier Tier { get; set; }
     public int Months { get; set; } = 1;
+    public string PaymentMethod { get; set; } = "Wallet";
 }
 
-public class SubscribeCommandHandler : IRequestHandler<SubscribeCommand, bool>
+public class SubscribeCommandHandler : IRequestHandler<SubscribeCommand, SubscriptionResultDto?>
 {
     private readonly IApplicationDbContext _context;
 
@@ -24,12 +30,10 @@ public class SubscribeCommandHandler : IRequestHandler<SubscribeCommand, bool>
         _context = context;
     }
 
-    public async Task<bool> Handle(SubscribeCommand request, CancellationToken cancellationToken)
+    public async Task<SubscriptionResultDto?> Handle(SubscribeCommand request, CancellationToken cancellationToken)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
-        if (user == null) return false;
-
-        if (request.Tier == SubscriptionTier.None || request.Months <= 0) return false;
+        if (user == null || request.Tier == SubscriptionTier.None || request.Months <= 0) return null;
 
         decimal monthlyPrice = request.Tier switch
         {
@@ -41,16 +45,29 @@ public class SubscribeCommandHandler : IRequestHandler<SubscribeCommand, bool>
 
         decimal totalPrice = monthlyPrice * request.Months;
 
-        if (!user.DeductFunds(totalPrice))
-            return false;
+        if (request.PaymentMethod.Equals("Wallet", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!user.DeductFunds(totalPrice)) return null;
+        }
 
         user.UpgradeTier(request.Tier, request.Months);
 
-        _context.AuditLogs.Add(new Domain.Entities.AuditLog
+        var subscriptionRecord = new UserSubscription(
+            user.Id,
+            request.Tier,
+            DateTime.UtcNow,
+            DateTime.UtcNow.AddMonths(request.Months),
+            totalPrice,
+            request.PaymentMethod
+        );
+
+        _context.UserSubscriptions.Add(subscriptionRecord);
+
+        _context.AuditLogs.Add(new AuditLog
         {
-            Username = user.UserName,
+            Username = user.UserName ?? string.Empty,
             Action = "Subscription Upgrade",
-            Details = $"Upgraded to {request.Tier} for {request.Months} months."
+            Details = $"Upgraded to {request.Tier} for {request.Months} months via {request.PaymentMethod}."
         });
 
         try
@@ -59,9 +76,13 @@ public class SubscribeCommandHandler : IRequestHandler<SubscribeCommand, bool>
         }
         catch (DbUpdateConcurrencyException)
         {
-            return false;
+            return null;
         }
 
-        return true;
+        return new SubscriptionResultDto
+        {
+            Tier = request.Tier.ToString(),
+            Message = $"Subscription upgraded successfully via {request.PaymentMethod}! 🎉"
+        };
     }
 }

@@ -1,15 +1,17 @@
-﻿using MediatR;
-using Microsoft.AspNetCore.Identity;
-using TicketBookingSystem.Application.Exceptions;
+﻿using TicketBookingSystem.Application.Exceptions;
 using TicketBookingSystem.Domain.Entities;
+using MediatR;
+using Microsoft.AspNetCore.Identity;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text.Json.Serialization;
 
 namespace TicketBookingSystem.Application.Features.Auth.Commands;
 
 public class ChangePasswordCommand : IRequest<bool>
 {
+    [JsonIgnore]
     public string UserId { get; set; } = string.Empty;
     public string CurrentPassword { get; set; } = string.Empty;
     public string NewPassword { get; set; } = string.Empty;
@@ -27,7 +29,7 @@ public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordComman
     public async Task<bool> Handle(ChangePasswordCommand request, CancellationToken cancellationToken)
     {
         var user = await _userManager.FindByIdAsync(request.UserId);
-        if (user == null)   
+        if (user == null)
             throw new NotFoundException(nameof(User), request.UserId);
 
         var result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);

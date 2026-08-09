@@ -1,44 +1,50 @@
 ﻿using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using System.Threading.Tasks;
+using TicketBookingSystem.Domain.Constants;
 using TicketBookingSystem.Domain.Entities;
-using TicketBookingSystem.Domain.Enums;
 
 namespace TicketBookingSystem.Infrastructure.Persistence;
 
 public static class AdminSeeder
 {
-    public static async Task SeedAdminsAsync(UserManager<User> userManager, IConfiguration configuration)
+    public static async Task SeedAdminsAsync(UserManager<User> userManager, RoleManager<IdentityRole> roleManager, IConfiguration configuration)
     {
-        if (!await userManager.Users.AnyAsync(u => u.Role == UserRole.Admin))
+        string[] roleNames = { Roles.Admin, Roles.Customer, Roles.Organizer, Roles.Staff };
+        foreach (var roleName in roleNames)
         {
-            
-            var husseinPassword = configuration["AdminPasswords:Hussein"];
-            var osamaPassword = configuration["AdminPasswords:Osama"];
-
-            if (string.IsNullOrEmpty(husseinPassword) || string.IsNullOrEmpty(osamaPassword))
-                return; 
-
-            var hussein = new User
+            if (!await roleManager.RoleExistsAsync(roleName))
             {
-                UserName = "sehs_rm",
-                Email = "sehs9556@gmail.com",
-                FullName = "Hussein (Super Admin)",
-                Role = UserRole.Admin,
+                await roleManager.CreateAsync(new IdentityRole(roleName));
+            }
+        }
+
+        await EnsureAdminUser(userManager, "sehs_rm", "sehs9556@gmail.com", "Hussein (Super Admin)", configuration["AdminPasswords:Hussein"]);
+        await EnsureAdminUser(userManager, "osama_21", "osama11111777@gmail.com", "Osama (Admin)", configuration["AdminPasswords:Osama"]);
+    }
+
+    private static async Task EnsureAdminUser(UserManager<User> userManager, string username, string email, string fullName, string? password)
+    {
+        if (string.IsNullOrEmpty(password)) return;
+
+        var user = await userManager.FindByNameAsync(username);
+
+        if (user == null)
+        {
+            user = new User
+            {
+                UserName = username,
+                Email = email,
+                FullName = fullName,
                 EmailConfirmed = true
             };
-            await userManager.CreateAsync(hussein, husseinPassword);
+            var result = await userManager.CreateAsync(user, password);
+            if (!result.Succeeded) return;
+        }
 
-            var osama = new User
-            {
-                UserName = "osama_21",
-                Email = "osama11111777@gmail.com",
-                FullName = "Osama (Admin)",
-                Role = UserRole.Admin,
-                EmailConfirmed = true
-            };
-            await userManager.CreateAsync(osama, osamaPassword);
+        if (!await userManager.IsInRoleAsync(user, Roles.Admin))
+        {
+            await userManager.AddToRoleAsync(user, Roles.Admin);
         }
     }
 }

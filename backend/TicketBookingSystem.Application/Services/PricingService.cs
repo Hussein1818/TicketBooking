@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using TicketBookingSystem.Application.DTOs.Pricing;
 using TicketBookingSystem.Application.Interfaces;
 using TicketBookingSystem.Domain.Entities;
 using TicketBookingSystem.Domain.Enums;
@@ -12,8 +13,7 @@ public class PricingService : IPricingService
 {
     private readonly IApplicationDbContext _context;
 
-    /// <summary>Platform fee percentage deducted from the ticket price.</summary>
-    private const decimal PlatformFeePercentage = 0.10m; // 10%
+    private const decimal PlatformFeePercentage = 0.10m; 
 
     public PricingService(IApplicationDbContext context)
     {
@@ -29,7 +29,6 @@ public class PricingService : IPricingService
         decimal originalPrice = basePriceEgp;
         decimal discountedPrice = basePriceEgp;
 
-        // 1. Apply tier-based subscription discount
         if (user.Tier != SubscriptionTier.None
             && user.TierExpiryDate.HasValue
             && user.TierExpiryDate.Value > DateTime.UtcNow)
@@ -44,7 +43,6 @@ public class PricingService : IPricingService
             discountedPrice -= discountedPrice * tierDiscount;
         }
 
-        // 2. Apply promo code discount (if valid, active, not expired, and within usage limits)
         if (!string.IsNullOrWhiteSpace(promoCode))
         {
             var promo = await _context.PromoCodes

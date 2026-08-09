@@ -2,11 +2,11 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using TicketBookingSystem.Application.DTOs.Events;
 using TicketBookingSystem.Application.Interfaces;
 using TicketBookingSystem.Domain.Enums;
 
@@ -16,21 +16,7 @@ public class GetEventsQuery : IRequest<PagedResult<EventDto>>
 {
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 20;
-    public string? Category { get; set; } 
-}
-
-public class EventDto
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public DateTime EventDate { get; set; }
-    public string Venue { get; set; } = string.Empty;
-    public bool IsClosed { get; set; }
-    public int MaxTicketsPerUser { get; set; }
-    public string Category { get; set; } = string.Empty;
-    public string ImageUrl { get; set; } = string.Empty;
-    public decimal TicketPrice { get; set; }
-    public int AttendingCount { get; set; }
+    public string? Category { get; set; }
 }
 
 public class GetEventsQueryHandler : IRequestHandler<GetEventsQuery, PagedResult<EventDto>>
@@ -46,23 +32,30 @@ public class GetEventsQueryHandler : IRequestHandler<GetEventsQuery, PagedResult
 
     public async Task<PagedResult<EventDto>> Handle(GetEventsQuery request, CancellationToken cancellationToken)
     {
-        int page = Math.Max(1, request.Page);
-        int pageSize = Math.Clamp(request.PageSize, 1, 50);
+        var cacheKey = $"Events_Page_{request.Page}_Size_{request.PageSize}_Cat_{request.Category ?? "ALL"}";
 
-       
-        var categoryKey = string.IsNullOrWhiteSpace(request.Category) ? "All" : request.Category.Trim();
-        var cacheKey = $"Events_Page_{page}_Size_{pageSize}_Cat_{categoryKey}";
-
-        var cachedEvents = await _cache.GetStringAsync(cacheKey, cancellationToken);
-        if (!string.IsNullOrEmpty(cachedEvents))
+        try
         {
-            return JsonSerializer.Deserialize<PagedResult<EventDto>>(cachedEvents)!;
+            var cachedEvents = await _cache.GetStringAsync(cacheKey, cancellationToken);
+            if (!string.IsNullOrEmpty(cachedEvents))
+            {
+                var deserializedResult = JsonSerializer.Deserialize<PagedResult<EventDto>>(cachedEvents);
+                if (deserializedResult != null) return deserializedResult;
+            }
+        }
+        catch (Exception)
+        {
         }
 
-        var query = _context.Events.AsNoTracking().AsQueryable();
+        var page = Math.Max(1, request.Page);
+        var pageSize = Math.Clamp(request.PageSize, 1, 100);
 
-        
-        if (!string.IsNullOrWhiteSpace(request.Category))
+        var query = _context.Events
+            .AsNoTracking()
+            .Where(e => e.EventDate >= DateTime.UtcNow && !e.IsClosed)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(request.Category) && request.Category.ToLower() != "null")
         {
             query = query.Where(e => e.Category.ToLower() == request.Category.ToLower());
         }
@@ -97,12 +90,18 @@ public class GetEventsQueryHandler : IRequestHandler<GetEventsQuery, PagedResult
             PageSize = pageSize
         };
 
-        var cacheOptions = new DistributedCacheEntryOptions
+        try
         {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5)
-        };
-
-        await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(result), cacheOptions, cancellationToken);
+            var cacheOptions = new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5)
+            };
+            await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(result), cacheOptions, cancellationToken);
+        }
+        catch (Exception)
+        {
+           
+        }
 
         return result;
     }

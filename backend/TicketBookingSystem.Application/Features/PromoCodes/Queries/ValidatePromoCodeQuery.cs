@@ -1,17 +1,19 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using TicketBookingSystem.Application.Interfaces;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
+using TicketBookingSystem.Application.DTOs.PromoCodes;
+using TicketBookingSystem.Application.Interfaces;
 
 namespace TicketBookingSystem.Application.Features.PromoCodes.Queries;
 
-public class ValidatePromoCodeQuery : IRequest<decimal>
+public class ValidatePromoCodeQuery : IRequest<PromoCodeValidationResultDto>
 {
     public string Code { get; set; } = string.Empty;
 }
 
-public class ValidatePromoCodeQueryHandler : IRequestHandler<ValidatePromoCodeQuery, decimal>
+public class ValidatePromoCodeQueryHandler : IRequestHandler<ValidatePromoCodeQuery, PromoCodeValidationResultDto>
 {
     private readonly IApplicationDbContext _context;
 
@@ -20,16 +22,17 @@ public class ValidatePromoCodeQueryHandler : IRequestHandler<ValidatePromoCodeQu
         _context = context;
     }
 
-    public async Task<decimal> Handle(ValidatePromoCodeQuery request, CancellationToken cancellationToken)
+    public async Task<PromoCodeValidationResultDto> Handle(ValidatePromoCodeQuery request, CancellationToken cancellationToken)
     {
         var promo = await _context.PromoCodes
+            .AsNoTracking()
             .FirstOrDefaultAsync(p => p.Code == request.Code.ToUpper().Trim()
                 && p.IsActive
                 && p.ExpirationDate > DateTime.UtcNow, cancellationToken);
 
         if (promo == null || promo.CurrentUsage >= promo.MaxUsage)
-            return 0;
+            return new PromoCodeValidationResultDto { DiscountPercentage = 0, Message = "Invalid or expired promo code." };
 
-        return promo.DiscountPercentage;
+        return new PromoCodeValidationResultDto { DiscountPercentage = promo.DiscountPercentage, Message = "Promo code is valid." };
     }
 }

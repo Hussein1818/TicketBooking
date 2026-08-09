@@ -1,10 +1,13 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using TicketBookingSystem.Application.Features.Auth.Commands;
 using TicketBookingSystem.Application.Features.Auth.Queries;
+using TicketBookingSystem.Domain.Constants;
 
 namespace TicketBookingSystem.Api.Controllers;
 
@@ -19,12 +22,21 @@ public class AuthController : ControllerBase
         _mediator = mediator;
     }
 
+    private void SetRefreshTokenCookie(string refreshToken)
+    {
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Expires = DateTime.UtcNow.AddDays(7),
+            Secure = true,
+            SameSite = SameSiteMode.None
+        };
+        Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
+    }
+
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterUserCommand command)
     {
-        if (string.IsNullOrEmpty(command.ClientURI))
-            command.ClientURI = $"{Request.Scheme}://{Request.Host}/api/auth/confirm-email";
-
         var userId = await _mediator.Send(command);
         return Ok(new { Message = "User registered successfully. Please check your email to confirm your account.", UserId = userId });
     }
@@ -33,41 +45,58 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Login([FromBody] LoginQuery query)
     {
         var authResponse = await _mediator.Send(query);
-        return Ok(authResponse);
+
+        SetRefreshTokenCookie(authResponse.RefreshToken);
+
+        return Ok(new
+        {
+            Token = authResponse.Token,
+            Roles = authResponse.Roles
+        });
     }
 
     [HttpGet("confirm-email")]
-    public async Task<IActionResult> ConfirmEmail([FromQuery] string userId, [FromQuery] string token)
+    public async Task<IActionResult> ConfirmEmail([FromQuery] ConfirmEmailCommand command)
     {
-        await _mediator.Send(new ConfirmEmailCommand { UserId = userId, Token = token });
-        return Ok(new { Message = "Email confirmed successfully. now You can login." });
+        await _mediator.Send(command);
+        return Ok(new { Message = "Email confirmed successfully. Now you can login." });
     }
 
     [HttpPost("resend-confirmation")]
     public async Task<IActionResult> ResendConfirmation([FromBody] ResendConfirmationEmailCommand command)
     {
-        if (string.IsNullOrEmpty(command.ClientURI))
-            command.ClientURI = $"{Request.Scheme}://{Request.Host}/api/auth/confirm-email";
-
         await _mediator.Send(command);
         return Ok(new { Message = "If the email is registered and not confirmed, a confirmation link has been sent." });
     }
 
     [HttpPost("refresh-token")]
-    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenCommand command)
+    public async Task<IActionResult> RefreshToken()
     {
+        var refreshToken = Request.Cookies["refreshToken"];
+        if (string.IsNullOrEmpty(refreshToken))
+            return Unauthorized(new { Message = "Refresh token is missing from cookies." });
+
+        var command = new RefreshTokenCommand { RefreshToken = refreshToken };
         var authResponse = await _mediator.Send(command);
-        return Ok(authResponse);
+
+        SetRefreshTokenCookie(authResponse.RefreshToken);
+
+        return Ok(new
+        {
+            Token = authResponse.Token,
+            Roles = authResponse.Roles
+        });
     }
 
     [Authorize]
     [HttpPost("revoke-token")]
     public async Task<IActionResult> RevokeToken()
     {
-        var userId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier) ?? string.Empty;
-
-        
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
         await _mediator.Send(new RevokeTokenCommand { UserId = userId });
+
+        Response.Cookies.Delete("refreshToken");
+
         return Ok(new { Message = "Token revoked successfully." });
     }
 
@@ -75,8 +104,7 @@ public class AuthController : ControllerBase
     [HttpPost("change-password")]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordCommand command)
     {
-        
-        command.UserId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier) ?? string.Empty;
+        command.UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
 
         var success = await _mediator.Send(command);
         if (!success)
@@ -85,13 +113,9 @@ public class AuthController : ControllerBase
         return Ok(new { Message = "Password updated successfully." });
     }
 
-
     [HttpPost("forgot-password")]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordCommand command)
     {
-        if (string.IsNullOrEmpty(command.ClientURI))
-            command.ClientURI = $"{Request.Scheme}://{Request.Host}/api/auth/reset-password";
-
         await _mediator.Send(command);
         return Ok(new { Message = "If the email is registered and confirmed, a password reset link has been sent." });
     }
@@ -101,21 +125,5 @@ public class AuthController : ControllerBase
     {
         await _mediator.Send(command);
         return Ok(new { Message = "Password has been reset successfully." });
-    }
-    //  Admin-only endpoint to launch blast campaigns for event attendees
-    [Authorize(Roles = "Admin,Organizer")]
-    [HttpPost("blast-campaign")]
-    public async Task<IActionResult> LaunchBlastCampaign([FromBody] TicketBookingSystem.Application.Features.Admin.Commands.BlastCampaignCommand command)
-    {
-        
-        command.CurrentUserId = User.Identity?.Name ?? string.Empty;
-        command.IsAdmin = User.IsInRole("Admin");
-
-        var usersNotified = await _mediator.Send(command);
-
-        if (usersNotified == 0)
-            return BadRequest(new { Message = "No attendees found to notify for this event." });
-
-        return Ok(new { Message = $"Blast campaign launched successfully! {usersNotified} attendees are being notified." });
     }
 }

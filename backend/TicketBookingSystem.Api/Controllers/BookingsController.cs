@@ -2,12 +2,16 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Configuration;
+using System.Linq;
+using System.Security.Claims;
+using System.Threading.Tasks;
+using TicketBookingSystem.Application.DTOs.Bookings;
 using TicketBookingSystem.Application.Features.Bookings.Commands;
 using TicketBookingSystem.Application.Features.Bookings.Queries;
 using TicketBookingSystem.Application.Features.Orders.Commands;
-using TicketBookingSystem.Application.Features.Wallet;
-using System.Security.Claims;
-using System.Threading.Tasks;
+using TicketBookingSystem.Application.Features.Wallet.Commands;
+using TicketBookingSystem.Domain.Constants;
 
 namespace TicketBookingSystem.Api.Controllers;
 
@@ -16,10 +20,12 @@ namespace TicketBookingSystem.Api.Controllers;
 public class BookingsController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IConfiguration _configuration;
 
-    public BookingsController(IMediator mediator)
+    public BookingsController(IMediator mediator, IConfiguration configuration)
     {
         _mediator = mediator;
+        _configuration = configuration;
     }
 
     [Authorize]
@@ -27,7 +33,6 @@ public class BookingsController : ControllerBase
     [EnableRateLimiting("BookingPolicy")]
     public async Task<IActionResult> BookSeat([FromBody] BookSeatCommand command)
     {
-        
         command.UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
         if (string.IsNullOrEmpty(command.UserId)) return Unauthorized();
 
@@ -40,6 +45,8 @@ public class BookingsController : ControllerBase
     public async Task<IActionResult> CheckoutCart([FromBody] CheckoutCartCommand command)
     {
         command.UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        if (string.IsNullOrEmpty(command.UserId)) return Unauthorized();
+
         var paymentUrl = await _mediator.Send(command);
 
         if (string.IsNullOrEmpty(paymentUrl))
@@ -52,8 +59,9 @@ public class BookingsController : ControllerBase
     [HttpPost("checkout-wallet")]
     public async Task<IActionResult> PayCartWithWallet([FromBody] PayWithWalletCommand command)
     {
-        
         command.UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        if (string.IsNullOrEmpty(command.UserId)) return Unauthorized();
+
         var success = await _mediator.Send(command);
 
         if (!success)
@@ -65,25 +73,15 @@ public class BookingsController : ControllerBase
     [HttpGet("callback")]
     public IActionResult PaymentCallback([FromQuery] bool success, [FromQuery] int merchant_order_id)
     {
-        string statusText = success ? "Payment Successful! 🎉" : "Payment Failed ❌";
-        string color = success ? "green" : "red";
-        string safeOrderId = System.Net.WebUtility.HtmlEncode(merchant_order_id.ToString());
+        var allowedOrigins = _configuration.GetSection("AllowedOrigins").Get<string[]>();
+        var frontendUrl = allowedOrigins?.FirstOrDefault() ?? "http://localhost:5173";
 
-        var htmlContent = $@"
-            <html>
-                <body style='text-align:center; padding-top:50px; font-family:Arial;'>
-                    <h1 style='color:{color};'>{System.Net.WebUtility.HtmlEncode(statusText)}</h1>
-                    <p>Order ID: {safeOrderId}</p>
-                    <script>
-                        setTimeout(function() {{ window.location.href = '/index.html'; }}, 3000);
-                    </script>
-                </body>
-            </html>";
+        var redirectUrl = $"{frontendUrl}/payment-result?success={success}&orderId={merchant_order_id}";
 
-        return Content(htmlContent, "text/html; charset=utf-8");
+        return Redirect(redirectUrl);
     }
 
-    [Authorize(Roles = "Admin,Staff")]
+    [Authorize(Roles = Roles.Admin + "," + Roles.Staff + "," + Roles.Organizer)]
     [HttpPost("validate")]
     public async Task<IActionResult> ValidateTicket([FromBody] ValidateTicketQuery query)
     {
@@ -91,7 +89,7 @@ public class BookingsController : ControllerBase
         return Ok(result);
     }
 
-    [Authorize(Roles = "Admin,Staff")]
+    [Authorize(Roles = Roles.Admin + "," + Roles.Staff + "," + Roles.Organizer)]
     [HttpPost("scan")]
     public async Task<IActionResult> ScanTicket([FromBody] ScanTicketCommand command)
     {
@@ -109,10 +107,12 @@ public class BookingsController : ControllerBase
 
     [Authorize]
     [HttpGet("my-tickets")]
-    [ProducesResponseType(typeof(List<UserTicketDto>), 200)] 
+    [ProducesResponseType(typeof(List<UserTicketDto>), 200)]
     public async Task<IActionResult> GetMyTickets()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
         var tickets = await _mediator.Send(new GetUserTicketsQuery { UserId = userId });
         return Ok(tickets);
     }
@@ -122,6 +122,8 @@ public class BookingsController : ControllerBase
     public async Task<IActionResult> CancelBooking(int bookingId)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
         var success = await _mediator.Send(new CancelBookingCommand { BookingId = bookingId, UserId = userId });
 
         if (!success)
@@ -132,10 +134,10 @@ public class BookingsController : ControllerBase
 
     [Authorize]
     [HttpPost("transfer")]
-    public async Task<IActionResult> TransferTicket([FromBody] TicketBookingSystem.Application.Features.Bookings.Commands.TransferTicketCommand command)
+    public async Task<IActionResult> TransferTicket([FromBody] TransferTicketCommand command)
     {
-       
         command.FromUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        if (string.IsNullOrEmpty(command.FromUserId)) return Unauthorized();
 
         var success = await _mediator.Send(command);
 
@@ -150,13 +152,40 @@ public class BookingsController : ControllerBase
     public async Task<IActionResult> MockCheckout()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
-        var command = new TicketBookingSystem.Application.Features.Bookings.Commands.MockCheckoutCommand { UserId = userId };
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
+        var command = new MockCheckoutCommand { UserId = userId };
         var success = await _mediator.Send(command);
 
         if (!success)
             return BadRequest(new { Message = "Your cart is empty or seats expired." });
 
         return Ok(new { Message = "Mock payment successful! Tickets are now confirmed and QR codes generated." });
+    }
+
+    [Authorize]
+    [HttpPost("confirm")]
+    public async Task<IActionResult> ConfirmBooking([FromBody] ConfirmBookingCommand command)
+    {
+        command.UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        if (string.IsNullOrEmpty(command.UserId)) return Unauthorized();
+
+        var paymentUrl = await _mediator.Send(command);
+
+        if (string.IsNullOrEmpty(paymentUrl))
+            return BadRequest(new { Message = "Failed to confirm booking or generate payment link. Seat might be expired." });
+
+        return Ok(new { Message = "Booking confirmed.", PaymentUrl = paymentUrl });
+    }
+    [Authorize]
+    [HttpGet("{bookingId}/download")]
+    public async Task<IActionResult> DownloadTicket(int bookingId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var result = await _mediator.Send(new DownloadTicketQuery { BookingId = bookingId, UserId = userId });
+
+        return File(result.FileData, result.ContentType, result.FileName);
     }
 }

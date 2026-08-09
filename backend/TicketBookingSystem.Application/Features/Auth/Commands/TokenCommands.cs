@@ -1,19 +1,19 @@
-﻿using MediatR;
-using Microsoft.AspNetCore.Identity;
-using System;
-using System.Security.Claims;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using TicketBookingSystem.Application.DTOs.Auth;
 using TicketBookingSystem.Application.Exceptions;
-using TicketBookingSystem.Application.Features.Auth.Queries;
 using TicketBookingSystem.Application.Interfaces;
 using TicketBookingSystem.Domain.Entities;
+using MediatR;
+using Microsoft.AspNetCore.Identity;
+using System;
+using System.Linq;
+using System.Text.Json.Serialization;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace TicketBookingSystem.Application.Features.Auth.Commands;
 
 public class RefreshTokenCommand : IRequest<AuthResponseDto>
 {
-    public string AccessToken { get; set; } = string.Empty;
     public string RefreshToken { get; set; } = string.Empty;
 }
 
@@ -30,19 +30,17 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, A
 
     public async Task<AuthResponseDto> Handle(RefreshTokenCommand request, CancellationToken cancellationToken)
     {
-        var principal = _tokenService.GetPrincipalFromExpiredToken(request.AccessToken);
-        
-        var userId = principal.FindFirstValue(ClaimTypes.NameIdentifier) ?? principal.Identity?.Name;
+       
+        var user = _userManager.Users.FirstOrDefault(u => u.RefreshToken == request.RefreshToken);
 
-        
-        var user = await _userManager.FindByIdAsync(userId ?? string.Empty);
-
-        if (user == null || user.RefreshToken != request.RefreshToken || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+        if (user == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
         {
             throw new BadRequestException("Invalid or expired refresh token.");
         }
 
-        var newAccessToken = _tokenService.GenerateToken(user);
+        var roles = await _userManager.GetRolesAsync(user);
+
+        var token = _tokenService.GenerateToken(user, roles);
         var newRefreshToken = _tokenService.GenerateRefreshToken();
 
         user.RefreshToken = newRefreshToken;
@@ -50,14 +48,16 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, A
 
         return new AuthResponseDto
         {
-            Token = newAccessToken,
-            RefreshToken = newRefreshToken
+            Token = token,
+            RefreshToken = newRefreshToken,
+            Roles = roles
         };
     }
 }
 
 public class RevokeTokenCommand : IRequest<bool>
 {
+    [JsonIgnore]
     public string UserId { get; set; } = string.Empty;
 }
 
@@ -72,7 +72,6 @@ public class RevokeTokenCommandHandler : IRequestHandler<RevokeTokenCommand, boo
 
     public async Task<bool> Handle(RevokeTokenCommand request, CancellationToken cancellationToken)
     {
-        
         var user = await _userManager.FindByIdAsync(request.UserId);
         if (user == null) return false;
 
