@@ -159,8 +159,8 @@ export default function Sidebar({ isOpen, setIsOpen, expanded, setExpanded, prof
                          },
                          body: JSON.stringify(auth.refreshToken)
                        });
-                     } catch (err) {
-                       console.error("Failed to revoke token", err);
+                     } catch {
+                       // silent fallback
                      }
                    }
                    auth.logout();

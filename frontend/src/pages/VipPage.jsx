@@ -27,7 +27,7 @@ export default function VipPage() {
       color: "text-[#e8cd51]",
       bg: "bg-[#e8cd51]/10",
       border: "border-[#e8cd51]",
-      price: 50,
+      price: 200,
       perks: ["Early Access to Events", "Dedicated Support Line", "5% Discount on Merchandise"]
     },
     {
@@ -37,7 +37,7 @@ export default function VipPage() {
       color: "text-teal-400",
       bg: "bg-teal-400/10",
       border: "border-teal-400",
-      price: 100,
+      price: 500,
       perks: ["All Gold Perks", "Backstage Passes (Select Events)", "15% Discount on Merchandise", "Free Seat Upgrades"]
     },
     {
@@ -47,7 +47,7 @@ export default function VipPage() {
       color: "text-purple-500",
       bg: "bg-purple-500/10",
       border: "border-purple-500",
-      price: 250,
+      price: 1000,
       perks: ["All Platinum Perks", "Exclusive Private Events", "Personal Concierge", "Lifetime Fan ID Status"]
     }
   ];

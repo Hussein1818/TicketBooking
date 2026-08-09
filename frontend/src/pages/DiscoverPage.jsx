@@ -6,6 +6,8 @@ import {
   Users,
   Zap,
   Loader2,
+  Sparkles,
+  Ticket,
 } from "lucide-react";
 import DashboardLayout from "../layouts/DashboardLayout";
 import { Link, useLocation } from "react-router-dom";
@@ -104,8 +106,8 @@ export default function DiscoverPage() {
         }
 
         setEvents(prev => page === 1 ? list : [...prev, ...list]);
-      } catch (error) {
-        console.error("Error fetching events:", error);
+      } catch {
+        // silent fallback
       } finally {
         setLoading(false);
         setLoadingMore(false);
@@ -166,9 +168,6 @@ export default function DiscoverPage() {
                 className="w-full rounded-full bg-white/[0.03] border border-white/10 py-3.5 pl-12 pr-5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:bg-white/[0.05] focus:border-[#14B8A6]/50 transition-all backdrop-blur-md shadow-inner"
               />
             </div>
-            <button className="flex h-12 w-12 items-center justify-center rounded-full bg-white/[0.03] border border-white/10 transition-all hover:bg-white/[0.08] backdrop-blur-md">
-              <SlidersHorizontal className="h-5 w-5 text-zinc-300" />
-            </button>
           </div>
         </motion.div>
 
@@ -200,75 +199,70 @@ export default function DiscoverPage() {
             className="mb-12 grid grid-cols-1 gap-8 lg:grid-cols-3"
           >
             {/* Hero Card */}
-            <div className="relative flex min-h-[450px] flex-col justify-end overflow-hidden rounded-[2.5rem] border border-white/5 bg-white/[0.02] backdrop-blur-xl p-10 lg:col-span-2 shadow-2xl group">
+            <div className="relative flex min-h-[480px] flex-col justify-end overflow-hidden rounded-[2.5rem] border border-[#14B8A6]/30 bg-[#0c0d10] p-8 md:p-12 lg:col-span-2 shadow-[0_20px_50px_rgba(0,0,0,0.8)] group transition-all duration-700 hover:border-[#14B8A6]/60 hover:shadow-[0_0_50px_rgba(20,184,166,0.2)]">
               <div className="absolute inset-0 z-0">
                 <img
                   src={getImageSrc(heroEvent.imageUrl || heroEvent.coverImage)}
                   alt={heroEvent.name}
-                  className="h-full w-full object-cover opacity-40 transition-transform duration-700 group-hover:scale-105 group-hover:opacity-50"
+                  className="h-full w-full object-cover opacity-60 transition-transform duration-700 group-hover:scale-105 group-hover:opacity-75"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/80 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0B0C0E] via-[#0B0C0E]/70 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#0B0C0E]/90 via-[#0B0C0E]/40 to-transparent" />
+                <div className="absolute -top-32 -left-32 w-80 h-80 bg-[#14B8A6]/20 blur-[120px] rounded-full pointer-events-none" />
               </div>
 
               <div className="relative z-10 w-full">
-                <div className="mb-5 flex gap-3">
-                  <span className="rounded-full bg-gradient-to-r from-[#14B8A6] to-[#0F766E] px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white shadow-[0_0_10px_rgba(20,184,166,0.3)]">
-                    Featured
+                <div className="mb-6 flex flex-wrap items-center gap-3">
+                  <span className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#14B8A6] to-[#0F766E] px-4 py-1.5 text-[11px] font-extrabold uppercase tracking-widest text-white shadow-[0_0_15px_rgba(20,184,166,0.4)]">
+                    <Sparkles className="w-3.5 h-3.5" /> Featured Event
                   </span>
                   {heroEvent.isClosed && (
-                    <span className="rounded-full bg-red-500/80 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white backdrop-blur-md">
+                    <span className="rounded-full bg-red-500/20 border border-red-500/40 px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest text-red-300 backdrop-blur-md">
                       Closed
                     </span>
                   )}
                   {heroEvent.category && (
-                    <span className="rounded-full bg-white/10 border border-white/20 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white backdrop-blur-md">
+                    <span className="rounded-full bg-white/10 border border-white/20 px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest text-white backdrop-blur-md">
                       {heroEvent.category}
                     </span>
                   )}
                 </div>
 
-                <h2 className="mb-4 text-4xl font-bold uppercase tracking-tighter text-white sm:text-5xl drop-shadow-md">
+                <h2 className="mb-4 text-4xl font-black uppercase tracking-tight text-white sm:text-5xl md:text-6xl drop-shadow-lg leading-none">
                   {heroEvent.name || heroEvent.title || "Unnamed Event"}
                 </h2>
 
-                <div className="mb-8 flex flex-wrap gap-5 text-sm font-medium text-zinc-300">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md">
-                      <Calendar className="h-4 w-4 text-[#14B8A6]" />
-                    </div>
+                <div className="mb-8 flex flex-wrap gap-3 text-sm font-medium">
+                  <div className="flex items-center gap-2.5 rounded-full bg-black/50 border border-white/10 px-4 py-2 text-zinc-200 backdrop-blur-md">
+                    <Calendar className="h-4 w-4 text-[#14B8A6]" />
                     {formatDate(heroEvent.eventDate || heroEvent.date)}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md">
-                      <MapPin className="h-4 w-4 text-[#14B8A6]" />
-                    </div>
+                  <div className="flex items-center gap-2.5 rounded-full bg-black/50 border border-white/10 px-4 py-2 text-zinc-200 backdrop-blur-md">
+                    <MapPin className="h-4 w-4 text-[#14B8A6]" />
                     {heroEvent.venue || heroEvent.location || "TBA"}
                   </div>
                   {heroEvent.attendingCount > 0 && (
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md">
-                        <Users className="h-4 w-4 text-[#14B8A6]" />
-                      </div>
+                    <div className="flex items-center gap-2.5 rounded-full bg-black/50 border border-white/10 px-4 py-2 text-zinc-200 backdrop-blur-md">
+                      <Users className="h-4 w-4 text-[#14B8A6]" />
                       {formatAttending(heroEvent.attendingCount)}
                     </div>
                   )}
                 </div>
 
-                <div className="mt-auto flex flex-col items-start justify-between border-t border-white/10 pt-6 sm:flex-row sm:items-end">
+                <div className="mt-auto flex flex-col items-start justify-between border-t border-white/15 pt-6 sm:flex-row sm:items-center gap-6">
                   <div>
                     <p className="mb-1 text-[11px] font-bold uppercase tracking-widest text-zinc-400">
-                      Entry From
+                      Ticket Starting From
                     </p>
-                    <p className="text-3xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-white/70">
+                    <p className="text-3xl md:text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-100 to-[#14B8A6]">
                       {formatPrice(heroEvent.ticketPrice ?? heroEvent.price)}
                     </p>
                   </div>
                   <Link
                     to={`/booking/${heroEvent.id}`}
-                    className="mt-6 rounded-full bg-white px-10 py-4 text-sm font-bold uppercase tracking-widest text-black transition-all hover:bg-zinc-200 sm:mt-0 hover:scale-[1.02] shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#14B8A6] to-[#0F766E] px-10 py-4 text-sm font-bold uppercase tracking-widest text-white transition-all hover:scale-105 hover:shadow-[0_0_30px_rgba(20,184,166,0.5)] active:scale-95"
                   >
-                    Book Now
+                    <Ticket className="w-4 h-4" /> Book Tickets Now
                   </Link>
                 </div>
               </div>

@@ -23,13 +23,33 @@ const toMessage = (payload, fallback) => {
 export const getErrorMessage = (error, fallback = "Something went wrong.") => {
   const data = error?.response?.data;
   if (data instanceof Blob) {
-    return "Action failed. Please check your inputs or try again.";
+    return "مش معاك فلوس كفاية";
   }
-  if (data?.errors) {
+  let rawMsg = "";
+  if (typeof data === "string" && data.trim()) {
+    rawMsg = data;
+  } else if (data?.errors) {
     const first = Object.values(data.errors)[0];
-    if (Array.isArray(first) && first.length) return first[0];
+    if (Array.isArray(first) && first.length) rawMsg = first[0];
+  } else {
+    rawMsg = toMessage(data, fallback) || error?.message || fallback;
   }
-  return toMessage(data, fallback) || error?.message || fallback;
+
+  const lower = String(rawMsg).toLowerCase();
+  if (
+    lower.includes("insufficient") ||
+    lower.includes("balance") ||
+    lower.includes("fund") ||
+    lower.includes("money") ||
+    lower.includes("not enough") ||
+    lower.includes("رصيد") ||
+    lower.includes("فلوس") ||
+    lower.includes("action failed")
+  ) {
+    return "مش معاك فلوس كفاية";
+  }
+
+  return rawMsg;
 };
 
 const authConfig = (token) =>
@@ -55,8 +75,24 @@ export const checkoutWallet = async ({ bookingIds, promoCode }, token) => {
     ...(authConfig(token) || {}),
     responseType: "blob"
   };
-  const response = await bookingsClient.post("/checkout-wallet", payload, config);
-  return response.data;
+  try {
+    const response = await bookingsClient.post("/checkout-wallet", payload, config);
+    return response.data;
+  } catch (error) {
+    if (error?.response?.data instanceof Blob) {
+      try {
+        const text = await error.response.data.text();
+        try {
+          error.response.data = JSON.parse(text);
+        } catch {
+          error.response.data = text;
+        }
+      } catch {
+        // failed to read blob text
+      }
+    }
+    throw error;
+  }
 };
 
 // POST /api/Bookings/checkout-paymob — { bookingIds, promoCode, targetCurrency }

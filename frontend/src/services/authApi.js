@@ -39,6 +39,24 @@ export const resendConfirmation = async (email) => {
   return toMessage(response.data, "Confirmation email sent.");
 };
 
+export const confirmEmail = async (userId, token) => {
+  try {
+    const response = await authClient.post(
+      `/confirm-email?userId=${encodeURIComponent(userId)}&token=${encodeURIComponent(token)}`,
+      { userId, token, code: token }
+    );
+    return toMessage(response.data, "Email confirmed successfully!");
+  } catch (error) {
+    if (error?.response?.status === 405 || error?.response?.status === 404) {
+      const getRes = await authClient.get(
+        `/confirm-email?userId=${encodeURIComponent(userId)}&token=${encodeURIComponent(token)}`
+      );
+      return toMessage(getRes.data, "Email confirmed successfully!");
+    }
+    throw error;
+  }
+};
+
 export const refreshToken = async (accessToken, refreshTokenValue) => {
   const response = await authClient.post("/refresh-token", {
     token: accessToken,
@@ -95,12 +113,18 @@ export const blastCampaign = async ({ eventId, subject, message, currentUserId, 
 };
 
 export const assignOrganizer = async (userId) => {
-  const response = await authClient.post(`/${userId}/assign-organizer`);
+  const token = localStorage.getItem("token");
+  const response = await authClient.post(`/Admin/users/${userId}/assign-organizer`, {}, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
   return toMessage(response.data, "Organizer role assigned successfully.");
 };
 
 export const revokeOrganizer = async (userId) => {
-  const response = await authClient.post(`/${userId}/revoke-organizer`);
+  const token = localStorage.getItem("token");
+  const response = await authClient.post(`/Admin/users/${userId}/revoke-organizer`, {}, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
   return toMessage(response.data, "Organizer role revoked successfully.");
 };
 

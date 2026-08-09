@@ -84,8 +84,8 @@ export default function SettingsPage() {
       setServerImageUrl(
         resolveImg(data?.profilePictureUrl || data?.profilePicture || data?.imageUrl || null)
       );
-    } catch (err) {
-      console.error("Failed to load profile:", err);
+    } catch {
+      // silent fallback
     } finally {
       setProfileLoading(false);
     }

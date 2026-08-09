@@ -19,8 +19,8 @@ export default function AdminLogsPage() {
         // Handle various response structures gracefully
         const items = Array.isArray(data) ? data : (data.items || data.data || []);
         setLogs(items);
-      } catch (error) {
-        console.error("Error fetching logs:", error);
+      } catch {
+        // silent fallback
       } finally {
         setLoading(false);
       }

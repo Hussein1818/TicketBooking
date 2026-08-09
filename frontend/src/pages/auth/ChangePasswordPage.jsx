@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckCircle, Loader2, Lock } from "lucide-react";
+import { CheckCircle, Loader2, Lock, Eye, EyeOff } from "lucide-react";
 import AuthLayout from "../../layouts/AuthLayout";
 import { changePassword, getErrorMessage } from "../../services/authApi";
 
@@ -8,6 +8,8 @@ export default function ChangePasswordPage() {
     currentPassword: "",
     newPassword: "",
   });
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -45,12 +47,19 @@ export default function ChangePasswordPage() {
             <div className="relative flex items-center">
               <Lock className="absolute left-3.5 h-4 w-4 text-zinc-500" />
               <input
-                type="password"
+                type={showCurrentPassword ? "text" : "password"}
                 value={formData.currentPassword}
                 onChange={(e) => setFormData((prev) => ({ ...prev, currentPassword: e.target.value }))}
-                className="w-full rounded-lg border border-white/5 bg-[#2a2a2b] pl-10 pr-4 py-3 text-sm text-white focus:border-teal-400/50 focus:outline-none"
+                className="w-full rounded-lg border border-white/5 bg-[#2a2a2b] pl-10 pr-10 py-3 text-sm text-white focus:border-teal-400/50 focus:outline-none"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowCurrentPassword(prev => !prev)}
+                className="absolute right-3.5 text-zinc-500 hover:text-zinc-300 transition-colors focus:outline-none"
+              >
+                {showCurrentPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+              </button>
             </div>
           </div>
           <div className="space-y-2">
@@ -58,12 +67,19 @@ export default function ChangePasswordPage() {
             <div className="relative flex items-center">
               <Lock className="absolute left-3.5 h-4 w-4 text-zinc-500" />
               <input
-                type="password"
+                type={showNewPassword ? "text" : "password"}
                 value={formData.newPassword}
                 onChange={(e) => setFormData((prev) => ({ ...prev, newPassword: e.target.value }))}
-                className="w-full rounded-lg border border-white/5 bg-[#2a2a2b] pl-10 pr-4 py-3 text-sm text-white focus:border-teal-400/50 focus:outline-none"
+                className="w-full rounded-lg border border-white/5 bg-[#2a2a2b] pl-10 pr-10 py-3 text-sm text-white focus:border-teal-400/50 focus:outline-none"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowNewPassword(prev => !prev)}
+                className="absolute right-3.5 text-zinc-500 hover:text-zinc-300 transition-colors focus:outline-none"
+              >
+                {showNewPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+              </button>
             </div>
           </div>
           <button

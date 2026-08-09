@@ -42,13 +42,28 @@ export const updateProfile = async (formData, token) => {
   return response.data;
 };
 
-// GET /api/Users/fan-id/download
 export const downloadFanId = async (token) => {
-  const response = await usersClient.get("/fan-id/download", {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    responseType: "blob", // To handle the application/octet-stream
-  });
-  return response.data;
+  try {
+    const response = await usersClient.get("/fan-id/download", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      responseType: "blob",
+    });
+    return response.data;
+  } catch (error) {
+    if (error?.response?.data instanceof Blob) {
+      try {
+        const text = await error.response.data.text();
+        try {
+          error.response.data = JSON.parse(text);
+        } catch {
+          error.response.data = text;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    throw error;
+  }
 };
