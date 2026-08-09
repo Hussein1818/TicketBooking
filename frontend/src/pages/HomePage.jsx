@@ -25,16 +25,11 @@ import {
   Slack,
   Airbnb,
 } from "brand-logos";
-import qrImg from "../assets/qr.png";
-import creditImg from "../assets/credet.png";
-import ticketImg from "../assets/ticket.png";
 import bgImg from "../assets/background.png";
 import layersImg from "../assets/Group 8.png";
 import group4Img from "../assets/Group 4.png";
 import sportsBg from "../assets/sports_bg.png";
 import theaterBg from "../assets/theater_bg.png";
-import comedyBg from "../assets/comedy_bg.png";
-import concertBg from "../assets/concert_bg.png";
 
 
 const RedbullIcon = (props) => (
