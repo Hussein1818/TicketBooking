@@ -10,6 +10,9 @@ import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import LogoLoop from "../components/LogoLoop";
 import CountUp from "../components/CountUp";
+import concertBg from "../assets/comedy_bg.png";
+import comedyBg from "../assets/comedy_bg.png";
+
 import {
   Spotify,
   Visa,
