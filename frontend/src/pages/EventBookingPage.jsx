@@ -214,8 +214,8 @@ export default function EventBookingPage() {
       try {
         const data = await getEventById(id || 1);
         setEventDetails(data);
-      } catch (e) {
-        console.error("Failed to fetch event details", e);
+      } catch {
+        // silent fallback
       }
     };
     const fetchSeats = async () => {
@@ -231,11 +231,13 @@ export default function EventBookingPage() {
     };
     const fetchSuggested = async () => {
       try {
-        const data = await getEvents({ page: 1, pageSize: 5 });
+        const data = await getEvents({ page: 1, pageSize: 20 });
         const list = Array.isArray(data) ? data : (data?.items || data?.data || []);
-        setSuggestedEvents(list.filter(e => String(e.id) !== String(id)).slice(0, 3));
-      } catch (e) {
-        console.error("Failed to fetch suggested events", e);
+        const filtered = list.filter(e => String(e.id) !== String(id));
+        const randomized = [...filtered].sort(() => 0.5 - Math.random()).slice(0, 3);
+        setSuggestedEvents(randomized);
+      } catch {
+        // silent fallback
       }
     };
     fetchEventDetails();
@@ -312,13 +314,14 @@ export default function EventBookingPage() {
         const r = await checkoutWallet({ bookingIds, promoCode: promoCode || "" }, token);
         
         if (r instanceof Blob) {
-          const url = window.URL.createObjectURL(new Blob([r]));
+          const url = window.URL.createObjectURL(r);
           const link = document.createElement("a");
           link.href = url;
           link.setAttribute("download", `Tickets-${Date.now()}.pdf`);
           document.body.appendChild(link);
           link.click();
           link.parentNode.removeChild(link);
+          setTimeout(() => window.URL.revokeObjectURL(url), 1000);
           setSuccess("Wallet checkout completed. Tickets downloaded!");
         } else {
           setSuccess(typeof r === "string" ? r : "Wallet checkout completed.");
@@ -331,7 +334,20 @@ export default function EventBookingPage() {
         }, 1500);
       }
     } catch (e) {
-      setError(getErrorMessage(e, "Checkout failed."));
+      const parsedError = getErrorMessage(e, "Checkout failed.");
+      if (
+        checkoutType === "wallet" &&
+        (parsedError === "Checkout failed." ||
+         parsedError.includes("Action failed") ||
+         parsedError.toLowerCase().includes("insufficient") ||
+         parsedError.toLowerCase().includes("balance") ||
+         e?.response?.status === 400 ||
+         e?.response?.status === 402)
+      ) {
+        setError("مش معاك فلوس كفاية");
+      } else {
+        setError(parsedError);
+      }
     } finally {
       setActionLoading(false);
     }

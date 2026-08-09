@@ -204,8 +204,8 @@ export default function EditEventsPage() {
         try {
           const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
           currentUserId = payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] || payload.nameid || payload.sub || payload.id || payload.uid;
-        } catch (e) {
-          console.error("Failed to parse token payload", e);
+        } catch {
+          // silent fallback
         }
       }
 

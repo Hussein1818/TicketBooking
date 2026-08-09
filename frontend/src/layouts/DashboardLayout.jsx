@@ -29,9 +29,9 @@ export default function DashboardLayout({ children }) {
         const updatedUser = { ...auth.user, ...data };
         auth.login(auth.token, updatedUser, auth.refreshToken);
       })
-      .catch((err) => {
-        console.error("Failed to fetch profile", err);
-      }); // silent fallback to store data
+      .catch(() => {
+        // silent fallback
+      });
   }, [token]);
 
   const displayName = profile?.fullName || profile?.username || storeUser?.fullName || storeUser?.username || 'User';

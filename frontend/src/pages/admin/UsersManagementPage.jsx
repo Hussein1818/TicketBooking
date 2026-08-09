@@ -13,14 +13,15 @@ import {
   ChevronDown,
   Mail,
   User,
+  Trash2,
 } from "lucide-react";
 import DashboardLayout from "../../layouts/DashboardLayout";
 import useAuthStore from "../../store/useAuthStore";
-import { getAllUsers } from "../../services/adminApi";
+import { getAllUsers, deleteUser, changeUserRole } from "../../services/adminApi";
 import { assignOrganizer, revokeOrganizer } from "../../services/authApi";
 
 const ROLE_STYLES = {
-  Admin: "bg-violet-500/15 text-violet-300 border border-violet-500/30",
+  Admin: "bg-purple-500/15 text-purple-300 border border-purple-500/30",
   Staff: "bg-blue-500/15 text-blue-300 border border-blue-500/30",
   Organizer: "bg-amber-500/15 text-amber-300 border border-amber-500/30",
   User: "bg-zinc-700/50 text-zinc-300 border border-zinc-600/40",
@@ -49,7 +50,7 @@ export default function UsersManagementPage() {
   const [sortField, setSortField] = useState("username");
   const [sortDir, setSortDir] = useState("asc");
   const [roleFilter, setRoleFilter] = useState("All");
-  const [organizerLoading, setOrganizerLoading] = useState({});
+  const [actionLoading, setActionLoading] = useState({});
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -78,19 +79,32 @@ export default function UsersManagementPage() {
     else { setSortField(field); setSortDir("asc"); }
   };
 
-  const handleOrganizerToggle = async (userId, isOrganizer) => {
-    setOrganizerLoading((prev) => ({ ...prev, [userId]: true }));
+  const handleRoleToggle = async (userId, newRole) => {
+    setActionLoading((prev) => ({ ...prev, [userId]: true }));
+    // Optimistic update
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, roles: [newRole], role: newRole } : u))
+    );
     try {
-      if (isOrganizer) {
-        await revokeOrganizer(userId);
-      } else {
-        await assignOrganizer(userId);
-      }
-      await fetchUsers();
-    } catch (err) {
-      console.error("Failed to toggle organizer role:", err);
+      await changeUserRole(userId, newRole, token);
+    } catch {
+      // Keep optimistic update or refetch
     } finally {
-      setOrganizerLoading((prev) => ({ ...prev, [userId]: false }));
+      setActionLoading((prev) => ({ ...prev, [userId]: false }));
+    }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm("Are you sure you want to delete this user?")) return;
+    setActionLoading((prev) => ({ ...prev, [userId]: true }));
+    // Optimistic update
+    setUsers((prev) => prev.filter((u) => u.id !== userId));
+    try {
+      await deleteUser(userId, token);
+    } catch {
+      // Keep optimistic update
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [userId]: false }));
     }
   };
 
@@ -263,7 +277,6 @@ export default function UsersManagementPage() {
                 <thead>
                   <tr className="border-b border-white/5 bg-black/20">
                     {[
-                      { key: "id", label: "#" },
                       { key: "username", label: "Username", icon: User },
                       { key: "email", label: "Email", icon: Mail },
                       { key: "roles", label: "Role" },
@@ -292,14 +305,14 @@ export default function UsersManagementPage() {
                       : user.role
                       ? [user.role]
                       : [];
+                    const isUserAdmin = roles.includes("Admin");
+                    const isUserOrganizer = roles.includes("Organizer");
+
                     return (
                       <tr
                         key={user.id ?? idx}
                         className="group transition-colors hover:bg-white/[0.03]"
                       >
-                        <td className="px-5 py-4 font-mono text-xs text-zinc-500">
-                          {user.id ?? idx + 1}
-                        </td>
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
                             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#14B8A6]/10 border border-[#14B8A6]/20 text-xs font-bold text-[#14B8A6]">
@@ -311,31 +324,65 @@ export default function UsersManagementPage() {
                         <td className="px-5 py-4 text-zinc-400">{user.email ?? "—"}</td>
                         <td className="px-5 py-4">{getRoleBadge(roles)}</td>
                         <td className="px-5 py-4">
-                          {!roles.includes("Admin") && !roles.includes("Staff") && (
+                          <div className="flex items-center gap-2">
+                            {/* Toggle Admin Button */}
                             <button
-                              onClick={() => handleOrganizerToggle(user.id, roles.includes("Organizer"))}
-                              disabled={organizerLoading[user.id]}
-                              className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-all disabled:opacity-50 ${
-                                roles.includes("Organizer")
-                                  ? "bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-red-500/15 hover:text-red-300 hover:border-red-500/30"
-                                  : "bg-[#14B8A6]/10 text-[#14B8A6] border border-[#14B8A6]/20 hover:bg-[#14B8A6]/20"
+                              onClick={() => handleRoleToggle(user.id, isUserAdmin ? "User" : "Admin")}
+                              disabled={actionLoading[user.id]}
+                              className={`flex items-center gap-1 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition-all disabled:opacity-50 ${
+                                isUserAdmin
+                                  ? "bg-purple-500/20 text-purple-300 border border-purple-500/40 hover:bg-purple-500/30"
+                                  : "bg-white/5 text-zinc-400 border border-white/10 hover:bg-purple-500/20 hover:text-purple-300 hover:border-purple-500/40"
                               }`}
+                              title={isUserAdmin ? "Revoke Admin Role" : "Make Admin"}
                             >
-                              {organizerLoading[user.id] ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : roles.includes("Organizer") ? (
-                                <>
-                                  <UserX className="h-3.5 w-3.5" />
-                                  Revoke
-                                </>
+                              {actionLoading[user.id] ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
                               ) : (
                                 <>
-                                  <UserCheck className="h-3.5 w-3.5" />
-                                  Organizer
+                                  <Shield className="h-3 w-3" />
+                                  {isUserAdmin ? "Admin" : "+ Admin"}
                                 </>
                               )}
                             </button>
-                          )}
+
+                            {/* Toggle Organizer Button */}
+                            <button
+                              onClick={() => handleRoleToggle(user.id, isUserOrganizer ? "User" : "Organizer")}
+                              disabled={actionLoading[user.id]}
+                              className={`flex items-center gap-1 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition-all disabled:opacity-50 ${
+                                isUserOrganizer
+                                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30"
+                                  : "bg-white/5 text-zinc-400 border border-white/10 hover:bg-amber-500/20 hover:text-amber-300 hover:border-amber-500/40"
+                              }`}
+                              title={isUserOrganizer ? "Revoke Organizer Role" : "Make Organizer"}
+                            >
+                              {actionLoading[user.id] ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : isUserOrganizer ? (
+                                <>
+                                  <UserX className="h-3 w-3" />
+                                  Organizer
+                                </>
+                              ) : (
+                                <>
+                                  <UserCheck className="h-3 w-3" />
+                                  + Organizer
+                                </>
+                              )}
+                            </button>
+
+                            {/* Delete User Button */}
+                            <button
+                              onClick={() => handleDeleteUser(user.id)}
+                              disabled={actionLoading[user.id]}
+                              className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/25 hover:border-red-500/40 transition-all disabled:opacity-50"
+                              title="Delete User"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );

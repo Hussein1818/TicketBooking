@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CheckCircle, Loader2, Lock, Mail, KeyRound } from "lucide-react";
+import { CheckCircle, Loader2, Lock, Mail, KeyRound, Eye, EyeOff } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import AuthLayout from "../../layouts/AuthLayout";
 import { getErrorMessage, resetPassword } from "../../services/authApi";
@@ -15,6 +15,7 @@ export default function ResetPasswordPage() {
     token: initialToken,
     newPassword: "",
   });
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -81,12 +82,19 @@ export default function ResetPasswordPage() {
             <div className="relative flex items-center">
               <Lock className="absolute left-3.5 h-4 w-4 text-zinc-500" />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={formData.newPassword}
                 onChange={(e) => setFormData((prev) => ({ ...prev, newPassword: e.target.value }))}
-                className="w-full rounded-lg border border-white/5 bg-[#2a2a2b] pl-10 pr-4 py-3 text-sm text-white focus:border-teal-400/50 focus:outline-none"
+                className="w-full rounded-lg border border-white/5 bg-[#2a2a2b] pl-10 pr-10 py-3 text-sm text-white focus:border-[#14B8A6]/50 focus:outline-none"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(prev => !prev)}
+                className="absolute right-3.5 text-zinc-500 hover:text-zinc-300 transition-colors focus:outline-none"
+              >
+                {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+              </button>
             </div>
           </div>
           <button

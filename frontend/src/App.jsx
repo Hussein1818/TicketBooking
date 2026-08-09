@@ -21,6 +21,7 @@ import SignUpPage from "./pages/auth/SignUpPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import ResendConfirmationPage from "./pages/auth/ResendConfirmationPage";
+import ConfirmEmailPage from "./pages/auth/ConfirmEmailPage";
 import ChangePasswordPage from "./pages/auth/ChangePasswordPage";
 import SessionPage from "./pages/auth/SessionPage";
 import BlastCampaignPage from "./pages/auth/BlastCampaignPage";
@@ -81,6 +82,7 @@ function App() {
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/resend-confirmation" element={<ResendConfirmationPage />} />
+      <Route path="/confirm-email" element={<ConfirmEmailPage />} />
       <Route path="/session" element={<SessionPage />} />
       <Route path="/booking/validate" element={<ValidateTicketPage />} />
       <Route path="/booking/scan" element={<ScanTicketPage />} />

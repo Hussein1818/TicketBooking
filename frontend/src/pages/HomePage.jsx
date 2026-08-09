@@ -1,4 +1,4 @@
-import { ArrowRight, ArrowUpRight, Loader2, Users, Search, Star, Music, Trophy, Palette, Mic, CheckCircle, Sparkles, Ticket, Zap, Flame, Globe, Mail, MapPin, Phone } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Loader2, Users, Search, Star, Music, Trophy, Palette, Mic, CheckCircle, Sparkles, Ticket, Zap, Flame, Globe, Mail, MapPin, Phone, ShieldCheck, Wallet, BarChart3 } from "lucide-react";
 import DashboardLayout from "../layouts/DashboardLayout";
 import EventCard from "../components/EventCard";
 import { useState, useEffect } from "react";
@@ -70,28 +70,62 @@ const BentoCard = ({ children, className, delay = 0 }) => (
   </motion.div>
 );
 
-const STACKED_FEATURES = [
+const FEATURES = [
   {
-    title: "Smart Tickets",
-    desc: "Say goodbye to paper. QR-powered digital tickets update in real-time, preventing fraud and making entry a breeze.",
-    icon: Ticket
+    title: "Smart QR Tickets",
+    badge: "Fraud Prevention",
+    desc: "Say goodbye to paper. Dynamic QR-powered digital tickets update in real-time to eliminate scalping and make gate entry instantaneous.",
+    icon: Ticket,
+    color: "from-teal-500/20 to-teal-500/0",
+    iconColor: "text-teal-400 bg-teal-500/10 border-teal-500/20"
   },
   {
-    title: "Instant Access",
-    desc: "Book in seconds. No queues, no waiting. Pay with your preferred method and secure your spot instantly.",
-    icon: Zap
+    title: "Instant One-Tap Access",
+    badge: "Sub-Second Checkout",
+    desc: "Book in seconds. Zero waiting queues. Pay with your preferred digital wallet or credit card and secure your seats immediately.",
+    icon: Zap,
+    color: "from-purple-500/20 to-purple-500/0",
+    iconColor: "text-purple-400 bg-purple-500/10 border-purple-500/20"
   },
   {
-    title: "Exclusive Perks",
-    desc: "Unlock backstage passes, early entry, and premium seating options tailored just for you.",
-    icon: Flame
+    title: "Exclusive VIP Perks",
+    badge: "Backstage & Priority",
+    desc: "Unlock VIP lounge access, early-bird entry passes, backstage access, and exclusive merchandise offers tailored just for you.",
+    icon: Flame,
+    color: "from-amber-500/20 to-amber-500/0",
+    iconColor: "text-amber-400 bg-amber-500/10 border-amber-500/20"
+  },
+  {
+    title: "Secure Ticket Transfer",
+    badge: "Verified Identity",
+    desc: "Transfer tickets securely to friends or colleagues in one click. Fully authenticated and protected by TicketOk identity security.",
+    icon: ShieldCheck,
+    color: "from-cyan-500/20 to-cyan-500/0",
+    iconColor: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20"
+  },
+  {
+    title: "Instant Wallet Balance",
+    badge: "Zero Transaction Delay",
+    desc: "Load your internal TicketOk wallet for lightning-fast checkouts, instant refund processing, and reward points bonuses.",
+    icon: Wallet,
+    color: "from-emerald-500/20 to-emerald-500/0",
+    iconColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+  },
+  {
+    title: "Real-Time Host Analytics",
+    badge: "For Organizers",
+    desc: "Monitor door scans, live venue check-ins, sales analytics, and send blast email campaigns to event attendees effortlessly.",
+    icon: BarChart3,
+    color: "from-blue-500/20 to-blue-500/0",
+    iconColor: "text-blue-400 bg-blue-500/10 border-blue-500/20"
   }
 ];
 
 const FeatureStack = () => {
   return (
-    <div className="pt-32 pb-16 max-w-5xl mx-auto px-4 flex flex-col items-center">
-      <div className="text-center mb-32 relative z-10">
+    <div className="py-24 max-w-7xl mx-auto px-4 md:px-8 flex flex-col items-center">
+      {/* Header */}
+      <div className="text-center mb-16 relative z-10">
         <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight drop-shadow-md">
           Unmatched <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#14B8A6] to-[#0F766E]">Features</span>
         </h2>
@@ -100,36 +134,43 @@ const FeatureStack = () => {
         </p>
       </div>
 
-      <div className="relative w-full max-w-5xl h-[360px] flex justify-center group cursor-pointer mt-16">
-        {STACKED_FEATURES.map((feat, i) => {
-          const reverseIndex = STACKED_FEATURES.length - 1 - i; 
-          return (
-            <div 
-              key={i}
-              className="absolute w-full md:w-[1000px] rounded-[2rem] bg-gradient-to-b from-[#1c1e22] to-[#111214] border border-white/5 p-8 md:p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 md:gap-12 transition-all duration-500 ease-out shadow-[0_20px_50px_rgba(0,0,0,0.8)] hover:!scale-[1.02] hover:!opacity-100 hover:!-translate-y-4 hover:!z-50"
-              style={{
-                zIndex: i,
-                top: `${-reverseIndex * 75}px`,
-                transform: `scale(${1 - reverseIndex * 0.05})`,
-                opacity: 1 - reverseIndex * 0.25,
-              }}
-            >
-              <div className="flex items-center gap-6">
-                <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
-                  <feat.icon className="w-7 h-7 text-white opacity-80" />
+      {/* Grid Features (2 per row on mobile) */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 w-full">
+        {FEATURES.map((feat, i) => (
+          <div
+            key={i}
+            className="group relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-b from-white/[0.04] to-white/[0.01] border border-white/10 p-3.5 sm:p-8 flex flex-col justify-between gap-3 sm:gap-6 transition-all duration-500 hover:-translate-y-2 hover:border-[#14B8A6]/40 hover:shadow-[0_20px_50px_rgba(20,184,166,0.12)]"
+          >
+            {/* Soft Ambient Background Glow on Hover */}
+            <div className={`absolute -top-24 -right-24 w-56 h-56 bg-gradient-to-br ${feat.color} blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none`} />
+
+            <div>
+              {/* Top Row: Icon + Badge */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 mb-3 sm:mb-6">
+                <div className={`w-9 h-9 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl border flex items-center justify-center transition-transform duration-500 group-hover:scale-110 shadow-lg ${feat.iconColor}`}>
+                  <feat.icon className="w-4 h-4 sm:w-7 sm:h-7" />
                 </div>
-                <h3 className="text-3xl md:text-5xl font-bold text-white tracking-tight">{feat.title}</h3>
+                <span className="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[8px] sm:text-[10px] font-bold uppercase tracking-widest text-[#14B8A6] bg-[#14B8A6]/10 border border-[#14B8A6]/20">
+                  {feat.badge}
+                </span>
               </div>
-              <p className="text-zinc-400 text-sm md:text-base max-w-[350px] leading-relaxed">
+
+              {/* Title */}
+              <h3 className="text-xs sm:text-2xl font-bold text-white tracking-tight mb-1.5 sm:mb-3 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-[#14B8A6] transition-all">
+                {feat.title}
+              </h3>
+
+              {/* Description */}
+              <p className="text-zinc-400 text-[10px] sm:text-sm leading-snug sm:leading-relaxed">
                 {feat.desc}
               </p>
             </div>
-          )
-        })}
+          </div>
+        ))}
       </div>
     </div>
-  )
-}
+  );
+};
 
 
 const FAKE_REVIEWS = [
@@ -151,22 +192,22 @@ const FAKE_REVIEWS = [
 ];
 
 const ReviewCard = ({ review }) => (
-  <div className="w-[300px] sm:w-[350px] p-6 rounded-3xl bg-[#111214] border border-white/5 flex flex-col gap-4 flex-shrink-0 cursor-default hover:bg-[#16181b] transition-colors shadow-lg">
-    <div className="flex items-center gap-4">
-      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-teal-500 to-purple-500 flex items-center justify-center text-white font-bold text-lg shadow-md">
+  <div className="w-[210px] sm:w-[350px] p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl bg-[#111214] border border-white/5 flex flex-col gap-2.5 sm:gap-4 flex-shrink-0 cursor-default hover:bg-[#16181b] transition-colors shadow-lg">
+    <div className="flex items-center gap-3 sm:gap-4">
+      <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-teal-500 to-purple-500 flex items-center justify-center text-white font-bold text-xs sm:text-lg shadow-md shrink-0">
         {review.name.charAt(0)}
       </div>
-      <div>
-        <h4 className="text-white font-bold text-base">{review.name}</h4>
-        <p className="text-zinc-500 text-sm">{review.username}</p>
+      <div className="min-w-0">
+        <h4 className="text-white font-bold text-xs sm:text-base truncate">{review.name}</h4>
+        <p className="text-zinc-500 text-[11px] sm:text-sm truncate">{review.username}</p>
       </div>
     </div>
     <div className="flex items-center gap-1">
       {[...Array(review.rating)].map((_, i) => (
-        <Star key={i} className="w-4 h-4 fill-teal-400 text-teal-400" />
+        <Star key={i} className="w-3 h-3 sm:w-4 sm:h-4 fill-teal-400 text-teal-400" />
       ))}
     </div>
-    <p className="text-zinc-300 text-sm leading-relaxed">
+    <p className="text-zinc-300 text-[11px] sm:text-sm leading-snug sm:leading-relaxed">
       "{review.text}"
     </p>
   </div>
@@ -179,30 +220,30 @@ const Testimonials = () => {
   const row3 = [...FAKE_REVIEWS.slice(10, 15), ...FAKE_REVIEWS.slice(10, 15)];
 
   const MarqueeRow = ({ row, animationClass, duration }) => (
-    <div className={`flex gap-6 w-max ${animationClass} hover:[animation-play-state:paused]`} style={{ animationDuration: duration }}>
+    <div className={`flex gap-3 sm:gap-6 w-max ${animationClass} hover:[animation-play-state:paused]`} style={{ animationDuration: duration }}>
       {/* First Set */}
-      <div className="flex gap-6">
+      <div className="flex gap-3 sm:gap-6">
         {row.map((review, i) => <ReviewCard key={`set1-${i}`} review={review} />)}
       </div>
       {/* Second Set (identical for seamless looping) */}
-      <div className="flex gap-6">
+      <div className="flex gap-3 sm:gap-6">
         {row.map((review, i) => <ReviewCard key={`set2-${i}`} review={review} />)}
       </div>
     </div>
   );
 
   return (
-    <div className="py-24 overflow-hidden relative border-t border-white/5 mt-8 w-full max-w-[100vw] -mx-8 md:-mx-10 px-8 md:px-10">
-      <div className="text-center mb-16 relative z-10">
-        <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight drop-shadow-md">Loved by <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#14B8A6] to-[#0F766E]">Thousands</span></h2>
-        <p className="text-zinc-400 text-lg max-w-2xl mx-auto px-4">Don't just take our word for it. Here is what the community is saying.</p>
+    <div className="py-24 overflow-hidden relative border-t border-white/5 mt-8 w-full px-4 sm:px-6 md:px-10 flex flex-col items-center justify-center">
+      <div className="text-center mb-12 sm:mb-16 relative z-10 max-w-2xl mx-auto">
+        <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight drop-shadow-md">Loved by <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#14B8A6] to-[#0F766E]">Thousands</span></h2>
+        <p className="text-zinc-400 text-sm sm:text-lg max-w-2xl mx-auto px-4">Don't just take our word for it. Here is what the community is saying.</p>
       </div>
 
       <div 
-        className="flex flex-col gap-6 relative max-w-full"
+        className="flex flex-col gap-4 sm:gap-6 relative w-full items-center justify-center overflow-hidden"
         style={{ 
-          WebkitMaskImage: 'linear-gradient(to right, transparent, black 15%, black 85%, transparent)',
-          maskImage: 'linear-gradient(to right, transparent, black 15%, black 85%, transparent)'
+          WebkitMaskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)',
+          maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)'
         }}
       >
         <MarqueeRow row={row1} animationClass="animate-marquee-left" duration="45s" />
@@ -328,16 +369,19 @@ export default function HomePage() {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
-        // Fetch events for everyone
-        const data = await getEvents({ page: 1, pageSize: 6 });
-        setEvents(Array.isArray(data) ? data : (data?.items || data?.data || []));
+        // Fetch events for everyone and randomize output
+        const data = await getEvents({ page: 1, pageSize: 20 });
+        const list = Array.isArray(data) ? data : (data?.items || data?.data || []);
+        // Randomize order
+        const randomized = [...list].sort(() => 0.5 - Math.random()).slice(0, 6);
+        setEvents(randomized);
 
         // Fetch stats if admin
         if (token && isAdmin) {
           await getDashboard(token);
         }
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
+      } catch {
+        // silent fallback
       } finally {
         setLoading(false);
       }
@@ -583,7 +627,7 @@ export default function HomePage() {
               </Link>
             </div>
 
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
               {loading ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <div

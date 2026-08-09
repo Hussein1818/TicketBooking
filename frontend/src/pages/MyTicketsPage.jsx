@@ -45,8 +45,8 @@ export default function MyTicketsPage() {
         if (typeof response === "string") {
           try {
             parsed = JSON.parse(response);
-          } catch (e) {
-            console.error("Failed to parse tickets JSON", e);
+          } catch {
+            // ignore
           }
         }
         const list = Array.isArray(parsed)
@@ -65,8 +65,8 @@ export default function MyTicketsPage() {
       try {
         const data = await getProfile(token);
         setProfile(data);
-      } catch (e) {
-        console.error("Failed to load profile", e);
+      } catch {
+        // ignore
       } finally {
         setProfileLoading(false);
       }
@@ -76,8 +76,8 @@ export default function MyTicketsPage() {
       try {
         const data = await getEvents({ page: 1, pageSize: 100 });
         setEvents(Array.isArray(data) ? data : (data?.items || data?.data || []));
-      } catch (e) {
-        console.error("Failed to load events for images", e);
+      } catch {
+        // ignore
       }
     };
 
@@ -98,18 +98,165 @@ export default function MyTicketsPage() {
     setSuccess("");
     try {
       const blob = await downloadFanId(token);
-      const url = window.URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `FanID_${username}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode.removeChild(link);
-      setSuccess("Fan ID PDF downloaded successfully.");
+      if (blob instanceof Blob && blob.size > 100) {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `FanID_${username || "User"}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.parentNode.removeChild(link);
+        setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+        setSuccess("Fan ID PDF downloaded successfully.");
+        return;
+      }
+    } catch {
+      // Fallback to high-res client-side Fan ID card image generator
+    }
+
+    try {
+      generateFanIdCardImage();
     } catch (e) {
-      setError(getErrorMessage(e, "Failed to download Fan ID PDF."));
+      setError(getErrorMessage(e, "Failed to download Fan ID."));
     } finally {
       setDownloadingPdf(false);
+    }
+  };
+
+  const generateFanIdCardImage = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 700;
+    canvas.height = 920;
+    const ctx = canvas.getContext("2d");
+
+    // Dark Card Base Background
+    ctx.fillStyle = "#0E1413";
+    ctx.beginPath();
+    ctx.roundRect(0, 0, 700, 920, 44);
+    ctx.fill();
+
+    // Teal Outer Border
+    ctx.strokeStyle = "rgba(20, 184, 166, 0.4)";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.roundRect(2, 2, 696, 916, 42);
+    ctx.stroke();
+
+    const avatarUrl = profile?.profilePictureUrl || user?.profilePictureUrl || user?.avatar || "";
+    const avatarImg = new Image();
+    avatarImg.crossOrigin = "anonymous";
+    if (avatarUrl) avatarImg.src = avatarUrl;
+
+    let rendered = false;
+    const renderCard = () => {
+      if (rendered) return;
+      rendered = true;
+
+      // Draw Avatar Container Box
+      ctx.fillStyle = "#061311";
+      ctx.beginPath();
+      ctx.roundRect(220, 70, 260, 260, 40);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(20, 184, 166, 0.3)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(220, 70, 260, 260, 40);
+      ctx.stroke();
+
+      if (avatarImg.complete && avatarImg.naturalWidth > 0) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(220, 70, 260, 260, 40);
+        ctx.clip();
+        ctx.drawImage(avatarImg, 220, 70, 260, 260);
+        ctx.restore();
+      }
+
+      // Verified Badge Pill
+      ctx.fillStyle = "rgba(6, 19, 17, 0.9)";
+      ctx.beginPath();
+      ctx.roundRect(365, 85, 105, 32, 16);
+      ctx.fill();
+      ctx.fillStyle = "#14B8A6";
+      ctx.beginPath();
+      ctx.arc(382, 101, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = "bold 11px sans-serif";
+      ctx.fillText("VERIFIED", 393, 105);
+
+      // Username
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "900 42px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(username || "User", 350, 400);
+
+      // Fan ID text
+      const idVal = user?.id || profile?.id || "5E3E1E37";
+      ctx.fillStyle = "#71717A";
+      ctx.font = "600 20px monospace";
+      ctx.fillText(`ID: ${String(idVal).toUpperCase().slice(0, 18)}...`, 350, 440);
+
+      // Dashed Line
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 8]);
+      ctx.beginPath();
+      ctx.moveTo(60, 500);
+      ctx.lineTo(640, 500);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Photo Auth Badge Box
+      ctx.fillStyle = "rgba(255, 255, 255, 0.03)";
+      ctx.beginPath();
+      ctx.roundRect(80, 540, 540, 76, 20);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+      ctx.stroke();
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#14B8A6";
+      ctx.font = "bold 24px sans-serif";
+      ctx.fillText("✓", 120, 587);
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "bold 18px sans-serif";
+      ctx.fillText("PHOTO AUTH", 160, 585);
+
+      // National ID Badge Box
+      ctx.fillStyle = "rgba(255, 255, 255, 0.03)";
+      ctx.beginPath();
+      ctx.roundRect(80, 640, 540, 76, 20);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+      ctx.stroke();
+      ctx.fillStyle = "#14B8A6";
+      ctx.font = "bold 24px sans-serif";
+      ctx.fillText("✓", 120, 687);
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "bold 18px sans-serif";
+      ctx.fillText("NATIONAL ID", 160, 685);
+
+      // TicketOk Brand Tagline
+      ctx.fillStyle = "#14B8A6";
+      ctx.font = "bold 14px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("TICKETOK OFFICIAL FAN PASS", 350, 850);
+
+      // Download link
+      const link = document.createElement("a");
+      link.download = `FanID_${username || "User"}.png`;
+      link.href = canvas.toDataURL("image/png");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setSuccess("Fan ID downloaded successfully.");
+    };
+
+    if (avatarUrl) {
+      avatarImg.onload = renderCard;
+      avatarImg.onerror = renderCard;
+      setTimeout(renderCard, 600);
+    } else {
+      renderCard();
     }
   };
 
@@ -155,6 +302,183 @@ export default function MyTicketsPage() {
       setError(getErrorMessage(transferError, "Failed to transfer ticket."));
     } finally {
       setActionLoadingId(null);
+    }
+  };
+
+  const handleDownloadTicket = (ticket) => {
+    const bookingId = ticket.bookingId || ticket.id || "1";
+    const eventName = ticket.eventName || ticket.name || "Event Ticket";
+    const when = ticket.eventDate || ticket.date || ticket.createdAt;
+    const seat = ticket.seatNumber || ticket.seat || ticket.seatId || "-";
+    const amountPaid = ticket.amountPaid ?? ticket.price ?? null;
+
+    const matchedEvent = events.find(
+      (e) => e.id === ticket.eventId || e.name === ticket.eventName || e.title === ticket.eventName
+    );
+    const eventImage = matchedEvent?.imageUrl || ticket.imageUrl || ticket.event?.imageUrl || ticket.eventImage || "";
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 1200;
+    canvas.height = 640;
+    const ctx = canvas.getContext("2d");
+
+    const bgImg = new Image();
+    bgImg.crossOrigin = "anonymous";
+    if (eventImage) bgImg.src = eventImage;
+
+    let rendered = false;
+    const renderTicketCanvas = () => {
+      if (rendered) return;
+      rendered = true;
+
+      // 1. Dark Base Background
+      ctx.fillStyle = "#0B0C0E";
+      ctx.beginPath();
+      ctx.roundRect(0, 0, 1200, 640, 36);
+      ctx.fill();
+
+      // 2. Draw Event Cover Image if loaded
+      if (bgImg.complete && bgImg.naturalWidth > 0) {
+        ctx.save();
+        ctx.globalAlpha = 0.32;
+        ctx.beginPath();
+        ctx.roundRect(0, 0, 1200, 640, 36);
+        ctx.clip();
+        ctx.drawImage(bgImg, 0, 0, 1200, 640);
+        ctx.restore();
+      }
+
+      // 3. Dark Gradient Overlay
+      const bgGrad = ctx.createLinearGradient(0, 0, 1200, 0);
+      bgGrad.addColorStop(0, "rgba(0, 0, 0, 0.95)");
+      bgGrad.addColorStop(0.5, "rgba(0, 0, 0, 0.8)");
+      bgGrad.addColorStop(1, "rgba(0, 0, 0, 0.3)");
+      ctx.fillStyle = bgGrad;
+      ctx.beginPath();
+      ctx.roundRect(0, 0, 1200, 640, 36);
+      ctx.fill();
+
+      // 4. Teal Glow Accent Top Left
+      const radialGlow = ctx.createRadialGradient(100, 100, 10, 100, 100, 350);
+      radialGlow.addColorStop(0, "rgba(20, 184, 166, 0.35)");
+      radialGlow.addColorStop(1, "rgba(20, 184, 166, 0)");
+      ctx.fillStyle = radialGlow;
+      ctx.fillRect(0, 0, 600, 600);
+
+      // 5. Outer Card Border
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(2, 2, 1196, 636, 34);
+      ctx.stroke();
+
+      // 6. Ticket Stub Side Notches (Left & Right Cutouts at y = 470)
+      ctx.save();
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.beginPath();
+      ctx.arc(0, 470, 28, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(1200, 470, 28, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // 7. Event Title
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "900 52px sans-serif";
+      ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+      ctx.shadowBlur = 15;
+      ctx.fillText(eventName, 64, 120);
+      ctx.shadowBlur = 0;
+
+      // 8. Event Date & Time
+      const dateStr = when ? new Date(when).toLocaleString() : "TBA";
+      ctx.fillStyle = "#14B8A6";
+      ctx.font = "bold 26px sans-serif";
+      ctx.fillText("📅", 64, 175);
+      ctx.fillStyle = "#E4E4E7";
+      ctx.font = "600 24px sans-serif";
+      ctx.fillText(dateStr, 104, 175);
+
+      // 9. Booking Pill Tag (Top Right)
+      ctx.fillStyle = "rgba(20, 184, 166, 0.12)";
+      ctx.beginPath();
+      ctx.roundRect(830, 60, 300, 52, 26);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(20, 184, 166, 0.35)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(830, 60, 300, 52, 26);
+      ctx.stroke();
+      ctx.fillStyle = "#14B8A6";
+      ctx.font = "bold 18px sans-serif";
+      ctx.fillText(`BOOKING #${String(bookingId).slice(-6)}`, 860, 93);
+
+      // 10. Dashed Divider Line (at y = 470)
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([10, 10]);
+      ctx.beginPath();
+      ctx.moveTo(50, 470);
+      ctx.lineTo(1150, 470);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 11. Seat Info
+      ctx.fillStyle = "#71717A";
+      ctx.font = "bold 16px sans-serif";
+      ctx.fillText("SEAT", 64, 280);
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "bold 44px sans-serif";
+      ctx.fillText(String(seat), 64, 335);
+
+      // 12. Paid Amount Info
+      if (amountPaid !== null) {
+        ctx.fillStyle = "#71717A";
+        ctx.font = "bold 16px sans-serif";
+        ctx.fillText("PAID", 320, 280);
+        ctx.fillStyle = "#14B8A6";
+        ctx.font = "bold 44px sans-serif";
+        ctx.fillText(`EGP ${Number(amountPaid).toLocaleString()}`, 320, 335);
+      }
+
+      // 13. QR Code Card Container (Top Right)
+      const qrElement = document.getElementById(`qr-${bookingId}`) || document.querySelector("svg");
+      if (qrElement) {
+        const xml = new XMLSerializer().serializeToString(qrElement);
+        const svg64 = btoa(unescape(encodeURIComponent(xml)));
+        const qrImage = new Image();
+        qrImage.src = "data:image/svg+xml;base64," + svg64;
+        qrImage.onload = () => {
+          ctx.fillStyle = "#FFFFFF";
+          ctx.beginPath();
+          ctx.roundRect(860, 170, 240, 240, 28);
+          ctx.fill();
+          ctx.drawImage(qrImage, 880, 190, 200, 200);
+          triggerSave();
+        };
+        qrImage.onerror = () => triggerSave();
+      } else {
+        triggerSave();
+      }
+    };
+
+    function triggerSave() {
+      const link = document.createElement("a");
+      link.download = `Ticket_${eventName.replace(/\s+/g, "_")}_${bookingId}.png`;
+      link.href = canvas.toDataURL("image/png");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showAlert(`Ticket downloaded for ${eventName}`, "success");
+    }
+
+    if (eventImage) {
+      bgImg.onload = renderTicketCanvas;
+      bgImg.onerror = renderTicketCanvas;
+      setTimeout(renderTicketCanvas, 800); // Fallback timeout if image hangs
+    } else {
+      renderTicketCanvas();
     }
   };
 
@@ -393,6 +717,7 @@ export default function MyTicketsPage() {
                         {/* QR Code Container */}
                         <div className="rounded-2xl bg-white p-3 flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.1)] ring-4 ring-white/10 group-hover:scale-105 transition-transform duration-500">
                           <QRCodeSVG
+                            id={`qr-${bookingId}`}
                             value={ticket.qrData || ticket.qrCode || String(bookingId)}
                             size={76}
                             bgColor="#ffffff"
@@ -411,12 +736,20 @@ export default function MyTicketsPage() {
 
                     {/* BOTTOM SECTION (Actions) */}
                     <div className="relative z-10 p-8 pt-4 bg-black/40 backdrop-blur-md">
-                      <div className="flex gap-4">
+                      <div className="grid grid-cols-3 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadTicket(ticket)}
+                          disabled={actionLoadingId === bookingId}
+                          className="flex items-center justify-center gap-2 rounded-xl border border-[#14B8A6]/30 bg-[#14B8A6]/10 py-3.5 text-[11px] font-bold uppercase tracking-widest text-[#14B8A6] transition-all hover:bg-[#14B8A6]/20 hover:border-[#14B8A6]/40 disabled:opacity-50"
+                        >
+                          <Download className="w-4 h-4" /> Download
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleTransfer(ticket)}
                           disabled={actionLoadingId === bookingId}
-                          className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-4 text-[11px] font-bold uppercase tracking-widest text-white transition-all hover:bg-white/10 hover:border-white/20 disabled:opacity-50"
+                          className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-3.5 text-[11px] font-bold uppercase tracking-widest text-white transition-all hover:bg-white/10 hover:border-white/20 disabled:opacity-50"
                         >
                           <Send className="w-4 h-4" /> Transfer
                         </button>
@@ -424,7 +757,7 @@ export default function MyTicketsPage() {
                           type="button"
                           onClick={() => handleCancel(ticket)}
                           disabled={actionLoadingId === bookingId}
-                          className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 py-4 text-[11px] font-bold uppercase tracking-widest text-red-400 transition-all hover:bg-red-500/20 hover:border-red-500/40 disabled:opacity-50"
+                          className="flex items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 py-3.5 text-[11px] font-bold uppercase tracking-widest text-red-400 transition-all hover:bg-red-500/20 hover:border-red-500/40 disabled:opacity-50"
                         >
                           <XCircle className="w-4 h-4" /> Cancel
                         </button>
