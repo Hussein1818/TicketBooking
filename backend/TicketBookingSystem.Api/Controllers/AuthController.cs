@@ -126,24 +126,4 @@ public class AuthController : ControllerBase
         await _mediator.Send(command);
         return Ok(new { Message = "Password has been reset successfully." });
     }
-
-    [HttpPost("{id}/assign-organizer")]
-    [Authorize(Roles = Roles.Admin)]
-    public async Task<IActionResult> AssignOrganizerRole(string id)
-    {
-        var command = new AssignOrganizerRoleCommand { UserId = id };
-        await _mediator.Send(command);
-
-        return Ok(new { Message = "User has been successfully upgraded to Organizer." });
-    }
-
-    [HttpPost("{id}/revoke-organizer")]
-    [Authorize(Roles = Roles.Admin)]
-    public async Task<IActionResult> RevokeOrganizerRole(string id)
-    {
-        var command = new RevokeOrganizerRoleCommand { UserId = id };
-        await _mediator.Send(command);
-
-        return Ok(new { Message = "Organizer role has been revoked successfully." });
-    }
 }

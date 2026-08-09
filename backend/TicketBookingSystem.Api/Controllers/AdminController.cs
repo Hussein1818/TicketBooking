@@ -5,6 +5,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using TicketBookingSystem.Application.Features.Admin.Commands;
 using TicketBookingSystem.Application.Features.Admin.Queries;
+using TicketBookingSystem.Application.Features.Auth.Commands;
 using TicketBookingSystem.Application.Features.Events.Commands;
 using TicketBookingSystem.Domain.Constants;
 
@@ -79,5 +80,47 @@ public class AdminController : ControllerBase
     {
         var users = await _mediator.Send(new GetAllUsersQuery());
         return Ok(users);
+    }
+
+    [Authorize(Roles = Roles.Admin)]
+    [HttpPost("users/{userId}/assign-organizer")]
+    public async Task<IActionResult> AssignOrganizerRole(string userId)
+    {
+        await _mediator.Send(new AssignOrganizerRoleCommand { UserId = userId });
+        return Ok(new { Message = "User has been successfully upgraded to Organizer." });
+    }
+
+    [Authorize(Roles = Roles.Admin)]
+    [HttpPost("users/{userId}/revoke-organizer")]
+    public async Task<IActionResult> RevokeOrganizerRole(string userId)
+    {
+        await _mediator.Send(new RevokeOrganizerRoleCommand { UserId = userId });
+        return Ok(new { Message = "Organizer role has been revoked successfully." });
+    }
+
+    [Authorize(Roles = Roles.Admin)]
+    [HttpPost("users/{userId}/assign-admin")]
+    public async Task<IActionResult> AssignAdminRole(string userId)
+    {
+        await _mediator.Send(new AssignAdminRoleCommand { TargetUserId = userId });
+        return Ok(new { Message = "User has been successfully upgraded to Admin." });
+    }
+
+    [Authorize(Roles = Roles.Admin)]
+    [HttpPost("users/{userId}/revoke-admin")]
+    public async Task<IActionResult> RevokeAdminRole(string userId)
+    {
+        var currentAdminId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        await _mediator.Send(new RevokeAdminRoleCommand { TargetUserId = userId, CurrentAdminId = currentAdminId });
+        return Ok(new { Message = "Admin role has been revoked successfully." });
+    }
+
+    [Authorize(Roles = Roles.Admin)]
+    [HttpDelete("users/{userId}")]
+    public async Task<IActionResult> DeleteUser(string userId)
+    {
+        var currentAdminId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        await _mediator.Send(new DeleteUserCommand { TargetUserId = userId, CurrentAdminId = currentAdminId });
+        return Ok(new { Message = "User deleted successfully." });
     }
 }
