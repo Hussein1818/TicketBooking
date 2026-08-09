@@ -17,8 +17,7 @@ export default function ResendConfirmationPage() {
     setLoading(true);
 
     try {
-      const clientURI = `${window.location.origin}/confirm-email`;
-      const message = await resendConfirmation(email, clientURI);
+      const message = await resendConfirmation(email);
       setSuccess(message);
     } catch (errorObject) {
       setError(getErrorMessage(errorObject, "Failed to resend confirmation email."));

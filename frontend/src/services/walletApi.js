@@ -30,24 +30,15 @@ export const getBalance = async (token) => {
   return response.data;
 };
 
-export const addFunds = async ({ username, amount }, token) => {
-  const response = await walletClient.post("/add-funds", { username, amount: Number(amount) }, authConfig(token));
+export const addFunds = async ({ amount }, token) => {
+  const response = await walletClient.post("/add-funds", { amount: Number(amount) }, authConfig(token));
   return response.data;
 };
 
-export const walletPay = async ({ bookingIds, username, promoCode = "" }, token) => {
-  const response = await walletClient.post(
-    "/pay",
-    { bookingIds: bookingIds.map(Number), username, promoCode },
-    authConfig(token),
-  );
-  return response.data;
-};
-
-export const transferWallet = async ({ fromUsername, toUsername, amount }, token) => {
+export const transferWallet = async ({ toUsername, amount }, token) => {
   const response = await walletClient.post(
     "/transfer",
-    { fromUsername, toUsername, amount: Number(amount) },
+    { toUsername, amount: Number(amount) },
     authConfig(token),
   );
   return response.data;

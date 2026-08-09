@@ -7,8 +7,14 @@ const parseJwtPayload = (token) => {
     if (!payloadPart) return null;
     const normalized = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
     const decoded = atob(normalized);
-    return JSON.parse(decoded);
-  } catch (error) {
+    let payload;
+    try {
+      payload = JSON.parse(decodeURIComponent(escape(decoded)));
+    } catch {
+      payload = JSON.parse(decoded);
+    }
+    return payload;
+  } catch (err) {
     return null;
   }
 };
@@ -30,7 +36,7 @@ const hasAdminRole = (source) => {
     .map((role) => String(role).toLowerCase());
 
   if (normalizedRoles.includes('admin')) return true;
-  if (source.isAdmin === true || source.IsAdmin === true) return true;
+  if (source.isAdmin === true || source.IsAdmin === true || String(source.isAdmin).toLowerCase() === 'true') return true;
   return false;
 };
 

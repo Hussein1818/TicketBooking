@@ -27,7 +27,7 @@ export default function VipPage() {
       color: "text-[#e8cd51]",
       bg: "bg-[#e8cd51]/10",
       border: "border-[#e8cd51]",
-      price: 50,
+      price: 200,
       perks: ["Early Access to Events", "Dedicated Support Line", "5% Discount on Merchandise"]
     },
     {
@@ -37,7 +37,7 @@ export default function VipPage() {
       color: "text-teal-400",
       bg: "bg-teal-400/10",
       border: "border-teal-400",
-      price: 100,
+      price: 500,
       perks: ["All Gold Perks", "Backstage Passes (Select Events)", "15% Discount on Merchandise", "Free Seat Upgrades"]
     },
     {
@@ -47,7 +47,7 @@ export default function VipPage() {
       color: "text-purple-500",
       bg: "bg-purple-500/10",
       border: "border-purple-500",
-      price: 250,
+      price: 1000,
       perks: ["All Platinum Perks", "Exclusive Private Events", "Personal Concierge", "Lifetime Fan ID Status"]
     }
   ];
@@ -64,7 +64,6 @@ export default function VipPage() {
 
     try {
       const response = await upgradeSubscription({
-        username,
         tier: selectedTier,
         months: Number(months)
       }, token);
@@ -79,27 +78,39 @@ export default function VipPage() {
 
   return (
     <DashboardLayout>
-      <div className="mx-auto max-w-6xl space-y-10">
-        <div className="text-center sm:text-left">
-          <h1 className="text-3xl lg:text-[40px] font-bold tracking-tight text-white mb-4 uppercase flex items-center justify-center sm:justify-start gap-3">
-            <Star className="w-8 h-8 text-[#e8cd51]" fill="currentColor" />
-            VIP Perks & Subscriptions
+      {/* Ambient VIP Lighting */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute top-[10%] left-[-10%] w-[600px] h-[600px] bg-[#0F766E]/15 blur-[150px] rounded-full mix-blend-screen" />
+        <div className="absolute top-[50%] right-[-10%] w-[800px] h-[800px] bg-[#14B8A6]/10 blur-[150px] rounded-full mix-blend-screen" />
+        <div className="absolute bottom-[-10%] left-[10%] w-[700px] h-[700px] bg-[#0F766E]/15 blur-[180px] rounded-full mix-blend-screen" />
+      </div>
+
+      <div className="relative z-10 mx-auto max-w-6xl space-y-12 px-4 pb-16 pt-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="text-center sm:text-left flex flex-col items-center sm:items-start">
+          <h1 className="text-4xl lg:text-6xl font-bold tracking-tighter text-white mb-4 flex items-center justify-center sm:justify-start gap-4 drop-shadow-md">
+            <Star className="w-10 h-10 text-[#e8cd51] drop-shadow-[0_0_15px_rgba(232,205,81,0.5)]" fill="currentColor" />
+            VIP <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#14B8A6] to-[#0F766E] ml-2">Perks</span>
           </h1>
-          <p className="text-zinc-400 max-w-2xl text-sm leading-relaxed mx-auto sm:mx-0">
-            Elevate your event experience with Obsidian Velocity's premium subscription tiers. Gain exclusive access, enhanced security, and unmatched privileges.
+          <p className="text-zinc-400 max-w-2xl text-lg leading-relaxed text-center sm:text-left">
+            Elevate your event experience with premium subscription tiers. Gain exclusive access, enhanced security, and unmatched privileges.
           </p>
         </div>
 
-        {error && <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-sm text-red-500 font-medium">{error}</div>}
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-[1.5rem] flex items-center gap-3 backdrop-blur-sm shadow-xl">
+            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            {error}
+          </div>
+        )}
         {success && (
-          <div className="flex items-center gap-2 rounded-lg border border-teal-500/50 bg-teal-500/10 p-4 text-sm text-teal-400 font-medium">
+          <div className="bg-[#14B8A6]/10 border border-[#14B8A6]/20 text-[#14B8A6] p-4 rounded-[1.5rem] flex items-center gap-3 backdrop-blur-sm shadow-xl">
             <CheckCircle className="h-5 w-5" />
             {success}
           </div>
         )}
 
         {/* Tiers Selection */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {tiers.map((tier) => {
             const isSelected = selectedTier === tier.id;
             const Icon = tier.icon;
@@ -108,52 +119,58 @@ export default function VipPage() {
               <div 
                 key={tier.id}
                 onClick={() => setSelectedTier(tier.id)}
-                className={`relative rounded-3xl border-2 transition-all cursor-pointer flex flex-col group ${
+                className={`relative rounded-[2.5rem] border-2 transition-all duration-500 cursor-pointer flex flex-col group overflow-hidden ${
                   isSelected 
-                    ? `${tier.border} ${tier.bg} shadow-[0_0_20px_rgba(0,0,0,0.5)] scale-105 z-10` 
-                    : `border-white/5 bg-[#16171a] hover:border-white/20`
+                    ? `${tier.border} bg-white/[0.04] shadow-[0_0_40px_rgba(0,0,0,0.3)] scale-105 z-20 backdrop-blur-3xl` 
+                    : `border-white/5 bg-white/[0.02] hover:bg-white/[0.03] hover:border-white/20 backdrop-blur-xl hover:-translate-y-2`
                 }`}
                 style={{
-                  WebkitMaskImage: 'radial-gradient(circle at 0% 50%, transparent 14px, black 15px), radial-gradient(circle at 100% 50%, transparent 14px, black 15px)',
+                  WebkitMaskImage: 'radial-gradient(circle at 0% 50%, transparent 16px, black 17px), radial-gradient(circle at 100% 50%, transparent 16px, black 17px)',
                   WebkitMaskSize: '51% 100%',
                   WebkitMaskRepeat: 'no-repeat',
                   WebkitMaskPosition: 'left top, right top',
-                  maskImage: 'radial-gradient(circle at 0% 50%, transparent 14px, black 15px), radial-gradient(circle at 100% 50%, transparent 14px, black 15px)',
+                  maskImage: 'radial-gradient(circle at 0% 50%, transparent 16px, black 17px), radial-gradient(circle at 100% 50%, transparent 16px, black 17px)',
                   maskSize: '51% 100%',
                   maskRepeat: 'no-repeat',
                   maskPosition: 'left top, right top',
                 }}
               >
+                {/* Subtle Tier Background Glow */}
+                {isSelected && (
+                   <div className={`absolute -top-32 -right-32 w-64 h-64 ${tier.bg} blur-[80px] rounded-full pointer-events-none opacity-50`}></div>
+                )}
+
                 {/* Popular Badge */}
                 {tier.id === 2 && (
-                  <div className="absolute top-0 right-0 bg-teal-400 text-black text-[9px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-bl-xl z-20 shadow-md">
+                  <div className="absolute top-0 right-0 bg-gradient-to-r from-[#14B8A6] to-[#0F766E] text-white text-[10px] font-bold uppercase tracking-widest px-4 py-2 rounded-bl-2xl z-20 shadow-[0_0_15px_rgba(20,184,166,0.3)]">
                     Recommended
                   </div>
                 )}
                 
                 {/* TOP SECTION (Header & Price) */}
-                <div className="p-8 pb-6">
-                  <Icon className={`w-10 h-10 ${tier.color} mb-6`} />
-                  <h3 className="text-xl font-bold text-white mb-2">{tier.name}</h3>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-white">EGP {tier.price}</span>
-                    <span className="text-xs text-zinc-500 font-medium uppercase">/ month</span>
+                <div className="p-10 pb-8 relative z-10">
+                  <div className={`w-16 h-16 rounded-2xl ${tier.bg} border ${tier.border} flex items-center justify-center mb-8 shadow-inner`}>
+                    <Icon className={`w-8 h-8 ${tier.color} drop-shadow-[0_0_10px_currentColor]`} />
+                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-2">{tier.name}</h3>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-white/70 tracking-tighter">EGP {tier.price}</span>
+                    <span className="text-sm text-zinc-500 font-bold uppercase">/ mo</span>
                   </div>
                 </div>
                 
                 {/* TICKET DIVIDER */}
-                <div className="relative flex items-center justify-center w-full h-4">
-                   {/* Dashed Line */}
-                   <div className={`w-full mx-6 border-t-[2px] border-dashed ${isSelected ? tier.border : 'border-white/10'} opacity-60`} />
+                <div className="relative flex items-center justify-center w-full h-8 opacity-40">
+                   <div className={`w-full mx-8 border-t-[2px] border-dashed ${isSelected ? tier.border : 'border-white/20'}`} />
                 </div>
                 
                 {/* BOTTOM SECTION (Perks) */}
-                <div className="p-8 pt-6 flex-1 bg-black/10">
-                  <ul className="space-y-4">
+                <div className="p-10 pt-4 flex-1 relative z-10">
+                  <ul className="space-y-5">
                     {tier.perks.map((perk, idx) => (
-                      <li key={idx} className="flex items-start gap-3">
-                        <CheckCircle className={`w-4 h-4 mt-0.5 ${tier.color}`} />
-                        <span className="text-sm text-zinc-300 leading-tight">{perk}</span>
+                      <li key={idx} className="flex items-start gap-4">
+                        <CheckCircle className={`w-5 h-5 mt-0.5 ${tier.color} drop-shadow-[0_0_5px_currentColor] shrink-0`} />
+                        <span className="text-sm text-zinc-300 font-medium leading-relaxed">{perk}</span>
                       </li>
                     ))}
                   </ul>
@@ -164,43 +181,47 @@ export default function VipPage() {
         </div>
 
         {/* Upgrade Form */}
-        <div className="rounded-xl border border-white/5 bg-[#111214] p-6 lg:p-8 flex flex-col md:flex-row items-center justify-between gap-8 mt-10">
-          <div className="flex-1 space-y-4">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <Shield className="w-5 h-5 text-teal-400" />
-              Configure Subscription
+        <div className="rounded-[2.5rem] border border-white/5 bg-white/[0.02] backdrop-blur-xl p-8 lg:p-12 flex flex-col lg:flex-row items-center justify-between gap-12 mt-16 shadow-2xl relative overflow-hidden group">
+          <div className="absolute inset-0 bg-gradient-to-bl from-white/[0.03] to-transparent pointer-events-none group-hover:opacity-100 opacity-50 transition-opacity" />
+          
+          <div className="flex-1 space-y-6 relative z-10">
+            <h2 className="text-3xl font-bold text-white flex items-center gap-3">
+              <Shield className="w-8 h-8 text-[#14B8A6] drop-shadow-[0_0_15px_rgba(20,184,166,0.5)]" />
+              Secure Activation
             </h2>
-            <p className="text-sm text-zinc-400 leading-relaxed max-w-lg">
-              Choose the duration for your VIP status. The total amount will be deducted directly from your secure wallet.
+            <p className="text-lg text-zinc-400 leading-relaxed max-w-xl">
+              Choose the duration for your VIP status. The total amount will be deducted directly from your secure wallet instantly.
             </p>
           </div>
           
-          <div className="w-full md:w-[400px] bg-[#16171a] border border-white/5 p-6 rounded-xl flex flex-col gap-6">
+          <div className="w-full lg:w-[450px] bg-black/40 border border-white/5 p-8 rounded-[2rem] flex flex-col gap-8 relative z-10 shadow-inner">
             <div>
-              <label className="block text-xs font-bold text-zinc-400 mb-3 uppercase tracking-wide">Duration (Months)</label>
+              <label className="block text-xs font-bold text-zinc-400 mb-4 uppercase tracking-widest">Duration (Months)</label>
               <input 
                 type="number" 
                 min="1" 
                 max="12" 
                 value={months}
                 onChange={(e) => setMonths(Math.max(1, Math.min(12, parseInt(e.target.value) || 1)))}
-                className="w-full rounded-lg border border-white/10 bg-[#0a0a0c] px-4 py-3 text-white focus:border-teal-500 focus:outline-none"
+                className="w-full rounded-[1.5rem] border border-transparent bg-white/5 px-6 py-4 text-white font-medium focus:border-[#14B8A6]/50 focus:bg-white/10 focus:outline-none transition-all"
               />
             </div>
             
-            <div className="flex items-center justify-between border-t border-white/5 pt-4">
-              <span className="text-sm font-bold text-zinc-400 uppercase tracking-widest">Total Cost</span>
-              <span className="text-2xl font-bold text-white">EGP {(tiers.find(t => t.id === selectedTier)?.price || 0) * months}</span>
+            <div className="flex items-center justify-between border-t border-white/5 pt-6">
+              <span className="text-sm font-bold text-zinc-500 uppercase tracking-widest">Total Cost</span>
+              <span className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-white/70">
+                EGP {(tiers.find(t => t.id === selectedTier)?.price || 0) * months}
+              </span>
             </div>
             
             <button
               onClick={handleUpgrade}
               disabled={loading}
-              className={`w-full rounded-lg py-3.5 text-sm font-bold uppercase tracking-widest text-black transition-all ${
-                loading ? "opacity-50 cursor-not-allowed bg-zinc-500" : "bg-teal-400 hover:bg-teal-300 shadow-[0_0_15px_rgba(48,216,192,0.2)]"
-              } flex items-center justify-center gap-2`}
+              className={`w-full rounded-[1.5rem] py-5 text-base font-bold uppercase tracking-widest text-black transition-all duration-300 ${
+                loading ? "opacity-50 cursor-not-allowed bg-zinc-500" : "bg-gradient-to-r from-[#14B8A6] to-[#0F766E] hover:shadow-[0_0_30px_rgba(20,184,166,0.3)] hover:scale-[1.02]"
+              } flex items-center justify-center gap-3`}
             >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Confirm Upgrade"}
+              {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : "Confirm Upgrade"}
             </button>
           </div>
         </div>

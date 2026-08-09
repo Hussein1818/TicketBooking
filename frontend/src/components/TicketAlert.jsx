@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+// eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, AlertTriangle, XCircle, Info, X, MessageSquareText } from 'lucide-react';
 import useAlertStore from '../store/useAlertStore';

@@ -1,7 +1,7 @@
-import { Loader2, CheckCircle, User, Lock, EyeOff, Zap } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
-import axios from 'axios';
+import { Loader2, CheckCircle, User, Lock, Eye, EyeOff, Zap, MailWarning } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { login as loginApi } from '../../services/authApi';
 import AuthLayout from '../../layouts/AuthLayout';
 import useAuthStore from '../../store/useAuthStore';
 import logoUrl from '../../assets/logo.png';
@@ -10,11 +10,21 @@ import LiquidEther from '../../components/LiquidEther';
 
 export default function SignInPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const login = useAuthStore((state) => state.login);
+  const from = location.state?.from || '/';
   const [formData, setFormData] = useState({ username: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isEmailUnconfirmed, setIsEmailUnconfirmed] = useState(false);
+
+  useEffect(() => {
+    if (location.state?.message) {
+      setSuccess(location.state.message);
+    }
+  }, [location.state]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -25,20 +35,48 @@ export default function SignInPage() {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setIsEmailUnconfirmed(false);
     setLoading(true);
     try {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://ticketok.runasp.net';
-      const response = await axios.post(`${baseUrl}/api/Auth/login`, {
-        usernameOrEmail: formData.username,
-        password: formData.password
-      });
+      const response = await loginApi(formData.username, formData.password);
+      
+      // If the backend returns roles at the root of the response instead of inside response.user
+      let userObj = response.user;
+      if (!userObj && (response.roles || response.role || response.Roles || response.Role)) {
+         userObj = { roles: response.roles || response.Roles, role: response.role || response.Role, ...response };
+      }
 
-      login(response.data.accessToken || response.data.token, response.data.user, response.data.refreshToken);
+      login(response.accessToken || response.token, userObj || response, response.refreshToken);
 
       setSuccess('Login successful! Redirecting...');
-      setTimeout(() => navigate('/'), 1500);
+      setTimeout(() => navigate(from, { replace: true }), 1500);
     } catch (err) {
-      setError('Invalid email or password');
+      const serverData = err?.response?.data;
+      const rawMsg = (
+        (typeof serverData === 'string' ? serverData : '') ||
+        serverData?.detail ||
+        serverData?.message ||
+        serverData?.title ||
+        err?.message ||
+        ''
+      );
+
+      const lower = String(rawMsg).toLowerCase();
+      const isUnconfirmed = 
+        lower.includes('confirm') || 
+        lower.includes('verify') || 
+        lower.includes('verification') ||
+        lower.includes('not confirmed') ||
+        serverData?.code === 'EmailNotConfirmed' ||
+        serverData?.title === 'EmailNotConfirmedException';
+
+      if (isUnconfirmed) {
+        setIsEmailUnconfirmed(true);
+        setError('يجب تأكيد البريد الإلكتروني أولاً قبل تسجيل الدخول. تفقد صندوق الوارد بريدك الإلكتروني.');
+      } else {
+        setIsEmailUnconfirmed(false);
+        setError(rawMsg || 'Invalid email or password');
+      }
     } finally {
       setLoading(false);
     }
@@ -74,8 +112,21 @@ export default function SignInPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-500">
-                {error}
+              <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-sm text-red-400 space-y-2">
+                <div className="flex items-start gap-2">
+                  {isEmailUnconfirmed && <MailWarning className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />}
+                  <span>{error}</span>
+                </div>
+                {isEmailUnconfirmed && (
+                  <div className="pt-2 border-t border-red-500/20">
+                    <Link
+                      to="/resend-confirmation"
+                      className="text-xs font-bold text-teal-400 hover:text-teal-300 underline"
+                    >
+                      إعادة إرسال رابط التأكيد (Resend Confirmation Link)
+                    </Link>
+                  </div>
+                )}
               </div>
             )}
             
@@ -110,7 +161,7 @@ export default function SignInPage() {
               <div className="relative flex items-center">
                 <Lock className="absolute left-3.5 h-4 w-4 text-zinc-500" />
                 <input 
-                  type="password" 
+                  type={showPassword ? "text" : "password"} 
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
@@ -118,7 +169,13 @@ export default function SignInPage() {
                   className="w-full rounded-lg border border-white/5 bg-[#2a2a2b]/80 pl-10 pr-10 py-3 text-sm text-white placeholder-zinc-500 transition-colors focus:border-teal-400/50 focus:bg-[#313133] focus:outline-none focus:ring-1 focus:ring-teal-400/50" 
                   required
                 />
-                <EyeOff className="absolute right-3.5 h-4 w-4 text-zinc-500 cursor-pointer hover:text-zinc-300 transition-colors" />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(prev => !prev)}
+                  className="absolute right-3.5 text-zinc-500 hover:text-zinc-300 transition-colors focus:outline-none"
+                >
+                  {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                </button>
               </div>
             </div>
 

@@ -1,7 +1,7 @@
-import { Loader2, CheckCircle, User, Mail, Lock, Zap } from 'lucide-react';
+import { Loader2, CheckCircle, User, Mail, Lock, Eye, EyeOff, Zap } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
-import axios from 'axios';
+import { register } from '../../services/authApi';
 import AuthLayout from '../../layouts/AuthLayout';
 import logoUrl from '../../assets/logo.png';
 
@@ -15,6 +15,8 @@ export default function SignUpPage() {
     password: '',
     confirmPassword: ''
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -36,20 +38,22 @@ export default function SignUpPage() {
 
     setLoading(true);
     try {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://ticketok.runasp.net';
-      await axios.post(`${baseUrl}/api/Auth/register`, {
+      await register({
         username: formData.username,
         email: formData.email,
         password: formData.password
       });
 
-      setSuccess('Account created successfully! Redirecting to login...');
+      setSuccess('Account created! Please check your email inbox to confirm your email address before signing in.');
+      const userEmail = formData.email;
       setFormData({ username: '', email: '', password: '', confirmPassword: '' });
-      setTimeout(() => navigate('/signin'), 1500);
+      setTimeout(() => navigate('/signin', { 
+        state: { 
+          email: userEmail, 
+          message: 'Account created successfully! Please check your email to confirm your account before logging in.' 
+        } 
+      }), 2500);
     } catch (err) {
-      // Log the full error to see what the server actually returns
-      console.error('Full error response:', err.response?.data);
-      
       setError(
         err.response?.data?.detail ||     // ← add this line (your error has `detail`)
         err.response?.data?.message ||
@@ -142,14 +146,21 @@ export default function SignUpPage() {
                 <div className="relative flex items-center">
                   <Lock className="absolute left-3.5 h-4 w-4 text-zinc-500" />
                   <input 
-                    type="password" 
+                    type={showPassword ? "text" : "password"} 
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
                     placeholder="••••••••" 
-                    className="w-full rounded-lg border border-white/5 bg-[#2a2a2b]/80 pl-10 pr-4 py-3 text-sm text-white placeholder-zinc-500 transition-colors focus:border-teal-400/50 focus:bg-[#313133] focus:outline-none focus:ring-1 focus:ring-teal-400/50" 
+                    className="w-full rounded-lg border border-white/5 bg-[#2a2a2b]/80 pl-10 pr-10 py-3 text-sm text-white placeholder-zinc-500 transition-colors focus:border-teal-400/50 focus:bg-[#313133] focus:outline-none focus:ring-1 focus:ring-teal-400/50" 
                     required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(prev => !prev)}
+                    className="absolute right-3.5 text-zinc-500 hover:text-zinc-300 transition-colors focus:outline-none"
+                  >
+                    {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                  </button>
                 </div>
               </div>
               
@@ -158,14 +169,21 @@ export default function SignUpPage() {
                 <div className="relative flex items-center">
                   <Lock className="absolute left-3.5 h-4 w-4 text-zinc-500" />
                   <input 
-                    type="password" 
+                    type={showConfirmPassword ? "text" : "password"} 
                     name="confirmPassword"
                     value={formData.confirmPassword}
                     onChange={handleChange}
                     placeholder="••••••••" 
-                    className="w-full rounded-lg border border-white/5 bg-[#2a2a2b]/80 pl-10 pr-4 py-3 text-sm text-white placeholder-zinc-500 transition-colors focus:border-teal-400/50 focus:bg-[#313133] focus:outline-none focus:ring-1 focus:ring-teal-400/50" 
+                    className="w-full rounded-lg border border-white/5 bg-[#2a2a2b]/80 pl-10 pr-10 py-3 text-sm text-white placeholder-zinc-500 transition-colors focus:border-teal-400/50 focus:bg-[#313133] focus:outline-none focus:ring-1 focus:ring-teal-400/50" 
                     required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(prev => !prev)}
+                    className="absolute right-3.5 text-zinc-500 hover:text-zinc-300 transition-colors focus:outline-none"
+                  >
+                    {showConfirmPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                  </button>
                 </div>
               </div>
             </div>

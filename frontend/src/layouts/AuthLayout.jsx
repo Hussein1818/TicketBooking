@@ -1,4 +1,5 @@
-import { Globe } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+// eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 
 export default function AuthLayout({ children }) {

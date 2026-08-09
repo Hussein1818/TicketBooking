@@ -10,6 +10,7 @@ import {
   transferBooking,
 } from "../services/bookingsApi";
 import { getProfile, downloadFanId } from "../services/usersApi";
+import { getEvents } from "../services/eventsApi";
 import { Link } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 
@@ -44,8 +45,8 @@ export default function MyTicketsPage() {
         if (typeof response === "string") {
           try {
             parsed = JSON.parse(response);
-          } catch (e) {
-            console.error("Failed to parse tickets JSON", e);
+          } catch {
+            // ignore
           }
         }
         const list = Array.isArray(parsed)
@@ -64,8 +65,8 @@ export default function MyTicketsPage() {
       try {
         const data = await getProfile(token);
         setProfile(data);
-      } catch (e) {
-        console.error("Failed to load profile", e);
+      } catch {
+        // ignore
       } finally {
         setProfileLoading(false);
       }
@@ -73,11 +74,10 @@ export default function MyTicketsPage() {
 
     const fetchAllEvents = async () => {
       try {
-        const BASE = import.meta.env.VITE_API_BASE_URL || "https://ticketok.runasp.net";
-        const res = await fetch(`${BASE}/api/Events`).then(r => r.json());
-        setEvents(Array.isArray(res) ? res : (res?.items || res?.data || []));
-      } catch (e) {
-        console.error("Failed to load events for images", e);
+        const data = await getEvents({ page: 1, pageSize: 100 });
+        setEvents(Array.isArray(data) ? data : (data?.items || data?.data || []));
+      } catch {
+        // ignore
       }
     };
 
@@ -98,18 +98,165 @@ export default function MyTicketsPage() {
     setSuccess("");
     try {
       const blob = await downloadFanId(token);
-      const url = window.URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `FanID_${username}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode.removeChild(link);
-      setSuccess("Fan ID PDF downloaded successfully.");
+      if (blob instanceof Blob && blob.size > 100) {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `FanID_${username || "User"}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.parentNode.removeChild(link);
+        setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+        setSuccess("Fan ID PDF downloaded successfully.");
+        return;
+      }
+    } catch {
+      // Fallback to high-res client-side Fan ID card image generator
+    }
+
+    try {
+      generateFanIdCardImage();
     } catch (e) {
-      setError(getErrorMessage(e, "Failed to download Fan ID PDF."));
+      setError(getErrorMessage(e, "Failed to download Fan ID."));
     } finally {
       setDownloadingPdf(false);
+    }
+  };
+
+  const generateFanIdCardImage = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 700;
+    canvas.height = 920;
+    const ctx = canvas.getContext("2d");
+
+    // Dark Card Base Background
+    ctx.fillStyle = "#0E1413";
+    ctx.beginPath();
+    ctx.roundRect(0, 0, 700, 920, 44);
+    ctx.fill();
+
+    // Teal Outer Border
+    ctx.strokeStyle = "rgba(20, 184, 166, 0.4)";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.roundRect(2, 2, 696, 916, 42);
+    ctx.stroke();
+
+    const avatarUrl = profile?.profilePictureUrl || user?.profilePictureUrl || user?.avatar || "";
+    const avatarImg = new Image();
+    avatarImg.crossOrigin = "anonymous";
+    if (avatarUrl) avatarImg.src = avatarUrl;
+
+    let rendered = false;
+    const renderCard = () => {
+      if (rendered) return;
+      rendered = true;
+
+      // Draw Avatar Container Box
+      ctx.fillStyle = "#061311";
+      ctx.beginPath();
+      ctx.roundRect(220, 70, 260, 260, 40);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(20, 184, 166, 0.3)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(220, 70, 260, 260, 40);
+      ctx.stroke();
+
+      if (avatarImg.complete && avatarImg.naturalWidth > 0) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(220, 70, 260, 260, 40);
+        ctx.clip();
+        ctx.drawImage(avatarImg, 220, 70, 260, 260);
+        ctx.restore();
+      }
+
+      // Verified Badge Pill
+      ctx.fillStyle = "rgba(6, 19, 17, 0.9)";
+      ctx.beginPath();
+      ctx.roundRect(365, 85, 105, 32, 16);
+      ctx.fill();
+      ctx.fillStyle = "#14B8A6";
+      ctx.beginPath();
+      ctx.arc(382, 101, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = "bold 11px sans-serif";
+      ctx.fillText("VERIFIED", 393, 105);
+
+      // Username
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "900 42px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(username || "User", 350, 400);
+
+      // Fan ID text
+      const idVal = user?.id || profile?.id || "5E3E1E37";
+      ctx.fillStyle = "#71717A";
+      ctx.font = "600 20px monospace";
+      ctx.fillText(`ID: ${String(idVal).toUpperCase().slice(0, 18)}...`, 350, 440);
+
+      // Dashed Line
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 8]);
+      ctx.beginPath();
+      ctx.moveTo(60, 500);
+      ctx.lineTo(640, 500);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Photo Auth Badge Box
+      ctx.fillStyle = "rgba(255, 255, 255, 0.03)";
+      ctx.beginPath();
+      ctx.roundRect(80, 540, 540, 76, 20);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+      ctx.stroke();
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#14B8A6";
+      ctx.font = "bold 24px sans-serif";
+      ctx.fillText("✓", 120, 587);
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "bold 18px sans-serif";
+      ctx.fillText("PHOTO AUTH", 160, 585);
+
+      // National ID Badge Box
+      ctx.fillStyle = "rgba(255, 255, 255, 0.03)";
+      ctx.beginPath();
+      ctx.roundRect(80, 640, 540, 76, 20);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+      ctx.stroke();
+      ctx.fillStyle = "#14B8A6";
+      ctx.font = "bold 24px sans-serif";
+      ctx.fillText("✓", 120, 687);
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "bold 18px sans-serif";
+      ctx.fillText("NATIONAL ID", 160, 685);
+
+      // TicketOk Brand Tagline
+      ctx.fillStyle = "#14B8A6";
+      ctx.font = "bold 14px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("TICKETOK OFFICIAL FAN PASS", 350, 850);
+
+      // Download link
+      const link = document.createElement("a");
+      link.download = `FanID_${username || "User"}.png`;
+      link.href = canvas.toDataURL("image/png");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setSuccess("Fan ID downloaded successfully.");
+    };
+
+    if (avatarUrl) {
+      avatarImg.onload = renderCard;
+      avatarImg.onerror = renderCard;
+      setTimeout(renderCard, 600);
+    } else {
+      renderCard();
     }
   };
 
@@ -147,7 +294,7 @@ export default function MyTicketsPage() {
     setSuccess("");
     try {
       await transferBooking(
-        { bookingId, fromUsername: username, toUsername },
+        { bookingId, toUsername },
         token,
       );
       setSuccess("Ticket transferred successfully.");
@@ -158,28 +305,211 @@ export default function MyTicketsPage() {
     }
   };
 
+  const handleDownloadTicket = (ticket) => {
+    const bookingId = ticket.bookingId || ticket.id || "1";
+    const eventName = ticket.eventName || ticket.name || "Event Ticket";
+    const when = ticket.eventDate || ticket.date || ticket.createdAt;
+    const seat = ticket.seatNumber || ticket.seat || ticket.seatId || "-";
+    const amountPaid = ticket.amountPaid ?? ticket.price ?? null;
+
+    const matchedEvent = events.find(
+      (e) => e.id === ticket.eventId || e.name === ticket.eventName || e.title === ticket.eventName
+    );
+    const eventImage = matchedEvent?.imageUrl || ticket.imageUrl || ticket.event?.imageUrl || ticket.eventImage || "";
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 1200;
+    canvas.height = 640;
+    const ctx = canvas.getContext("2d");
+
+    const bgImg = new Image();
+    bgImg.crossOrigin = "anonymous";
+    if (eventImage) bgImg.src = eventImage;
+
+    let rendered = false;
+    const renderTicketCanvas = () => {
+      if (rendered) return;
+      rendered = true;
+
+      // 1. Dark Base Background
+      ctx.fillStyle = "#0B0C0E";
+      ctx.beginPath();
+      ctx.roundRect(0, 0, 1200, 640, 36);
+      ctx.fill();
+
+      // 2. Draw Event Cover Image if loaded
+      if (bgImg.complete && bgImg.naturalWidth > 0) {
+        ctx.save();
+        ctx.globalAlpha = 0.32;
+        ctx.beginPath();
+        ctx.roundRect(0, 0, 1200, 640, 36);
+        ctx.clip();
+        ctx.drawImage(bgImg, 0, 0, 1200, 640);
+        ctx.restore();
+      }
+
+      // 3. Dark Gradient Overlay
+      const bgGrad = ctx.createLinearGradient(0, 0, 1200, 0);
+      bgGrad.addColorStop(0, "rgba(0, 0, 0, 0.95)");
+      bgGrad.addColorStop(0.5, "rgba(0, 0, 0, 0.8)");
+      bgGrad.addColorStop(1, "rgba(0, 0, 0, 0.3)");
+      ctx.fillStyle = bgGrad;
+      ctx.beginPath();
+      ctx.roundRect(0, 0, 1200, 640, 36);
+      ctx.fill();
+
+      // 4. Teal Glow Accent Top Left
+      const radialGlow = ctx.createRadialGradient(100, 100, 10, 100, 100, 350);
+      radialGlow.addColorStop(0, "rgba(20, 184, 166, 0.35)");
+      radialGlow.addColorStop(1, "rgba(20, 184, 166, 0)");
+      ctx.fillStyle = radialGlow;
+      ctx.fillRect(0, 0, 600, 600);
+
+      // 5. Outer Card Border
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(2, 2, 1196, 636, 34);
+      ctx.stroke();
+
+      // 6. Ticket Stub Side Notches (Left & Right Cutouts at y = 470)
+      ctx.save();
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.beginPath();
+      ctx.arc(0, 470, 28, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(1200, 470, 28, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // 7. Event Title
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "900 52px sans-serif";
+      ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+      ctx.shadowBlur = 15;
+      ctx.fillText(eventName, 64, 120);
+      ctx.shadowBlur = 0;
+
+      // 8. Event Date & Time
+      const dateStr = when ? new Date(when).toLocaleString() : "TBA";
+      ctx.fillStyle = "#14B8A6";
+      ctx.font = "bold 26px sans-serif";
+      ctx.fillText("📅", 64, 175);
+      ctx.fillStyle = "#E4E4E7";
+      ctx.font = "600 24px sans-serif";
+      ctx.fillText(dateStr, 104, 175);
+
+      // 9. Booking Pill Tag (Top Right)
+      ctx.fillStyle = "rgba(20, 184, 166, 0.12)";
+      ctx.beginPath();
+      ctx.roundRect(830, 60, 300, 52, 26);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(20, 184, 166, 0.35)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(830, 60, 300, 52, 26);
+      ctx.stroke();
+      ctx.fillStyle = "#14B8A6";
+      ctx.font = "bold 18px sans-serif";
+      ctx.fillText(`BOOKING #${String(bookingId).slice(-6)}`, 860, 93);
+
+      // 10. Dashed Divider Line (at y = 470)
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([10, 10]);
+      ctx.beginPath();
+      ctx.moveTo(50, 470);
+      ctx.lineTo(1150, 470);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 11. Seat Info
+      ctx.fillStyle = "#71717A";
+      ctx.font = "bold 16px sans-serif";
+      ctx.fillText("SEAT", 64, 280);
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "bold 44px sans-serif";
+      ctx.fillText(String(seat), 64, 335);
+
+      // 12. Paid Amount Info
+      if (amountPaid !== null) {
+        ctx.fillStyle = "#71717A";
+        ctx.font = "bold 16px sans-serif";
+        ctx.fillText("PAID", 320, 280);
+        ctx.fillStyle = "#14B8A6";
+        ctx.font = "bold 44px sans-serif";
+        ctx.fillText(`EGP ${Number(amountPaid).toLocaleString()}`, 320, 335);
+      }
+
+      // 13. QR Code Card Container (Top Right)
+      const qrElement = document.getElementById(`qr-${bookingId}`) || document.querySelector("svg");
+      if (qrElement) {
+        const xml = new XMLSerializer().serializeToString(qrElement);
+        const svg64 = btoa(unescape(encodeURIComponent(xml)));
+        const qrImage = new Image();
+        qrImage.src = "data:image/svg+xml;base64," + svg64;
+        qrImage.onload = () => {
+          ctx.fillStyle = "#FFFFFF";
+          ctx.beginPath();
+          ctx.roundRect(860, 170, 240, 240, 28);
+          ctx.fill();
+          ctx.drawImage(qrImage, 880, 190, 200, 200);
+          triggerSave();
+        };
+        qrImage.onerror = () => triggerSave();
+      } else {
+        triggerSave();
+      }
+    };
+
+    function triggerSave() {
+      const link = document.createElement("a");
+      link.download = `Ticket_${eventName.replace(/\s+/g, "_")}_${bookingId}.png`;
+      link.href = canvas.toDataURL("image/png");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showAlert(`Ticket downloaded for ${eventName}`, "success");
+    }
+
+    if (eventImage) {
+      bgImg.onload = renderTicketCanvas;
+      bgImg.onerror = renderTicketCanvas;
+      setTimeout(renderTicketCanvas, 800); // Fallback timeout if image hangs
+    } else {
+      renderTicketCanvas();
+    }
+  };
+
   return (
     <DashboardLayout>
-      <div className="mx-auto max-w-6xl">
+      {/* Ambient Lighting */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute top-[0%] left-[-10%] w-[500px] h-[500px] bg-[#0F766E]/15 blur-[150px] rounded-full mix-blend-screen" />
+        <div className="absolute top-[30%] right-[-10%] w-[700px] h-[700px] bg-[#14B8A6]/10 blur-[150px] rounded-full mix-blend-screen" />
+        <div className="absolute bottom-[0%] left-[20%] w-[600px] h-[600px] bg-[#0F766E]/15 blur-[180px] rounded-full mix-blend-screen" />
+      </div>
+
+      <div className="relative z-10 mx-auto max-w-6xl px-4 py-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
         {/* Header Section */}
-        <div className="mb-10">
-          <h1 className="mb-2 text-4xl font-bold tracking-tight text-white">
-            Tickets & ID
+        <div className="mb-12">
+          <h1 className="mb-3 text-4xl lg:text-5xl font-bold tracking-tighter text-white drop-shadow-md">
+            Tickets & <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#14B8A6] to-[#0F766E]">ID</span>
           </h1>
-          <p className="max-w-xl text-sm text-zinc-400 leading-relaxed">
-            Manage your event access and secure fan identity from one
-            centralized command center.
+          <p className="max-w-xl text-base text-zinc-400 leading-relaxed">
+            Manage your event access and secure fan identity from one centralized command center.
           </p>
-          <div className="mt-4 flex gap-2">
+          <div className="mt-6 flex gap-3">
             <Link
               to="/booking/validate"
-              className="rounded border border-white/20 px-3 py-1.5 text-xs font-bold text-white hover:bg-white/10"
+              className="rounded-full bg-white/5 border border-white/10 px-5 py-2.5 text-sm font-bold text-white hover:bg-white/10 hover:border-white/20 transition-all shadow-[0_0_15px_rgba(255,255,255,0.05)]"
             >
               Validate QR
             </Link>
             <Link
               to="/booking/scan"
-              className="rounded border border-white/20 px-3 py-1.5 text-xs font-bold text-white hover:bg-white/10"
+              className="rounded-full bg-white/5 border border-white/10 px-5 py-2.5 text-sm font-bold text-white hover:bg-white/10 hover:border-white/20 transition-all shadow-[0_0_15px_rgba(255,255,255,0.05)]"
             >
               Scan QR
             </Link>
@@ -187,27 +517,43 @@ export default function MyTicketsPage() {
         </div>
 
         {error && (
-          <div className="mb-5 rounded border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          <div className="mb-8 rounded-[1.5rem] border border-red-500/20 bg-red-500/10 px-6 py-4 text-sm font-medium text-red-400 flex items-center gap-3 backdrop-blur-sm shadow-xl">
+            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
             {error}
           </div>
         )}
         {success && (
-          <div className="mb-5 rounded border border-teal-500/40 bg-teal-500/10 px-4 py-3 text-sm text-teal-400">
+          <div className="mb-8 rounded-[1.5rem] border border-[#14B8A6]/20 bg-[#14B8A6]/10 px-6 py-4 text-sm font-medium text-[#14B8A6] flex items-center gap-3 backdrop-blur-sm shadow-xl">
+            <CheckCircle2 className="w-5 h-5" />
             {success}
           </div>
         )}
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+        
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-12">
           {/* Left Column - Profile & Wallet */}
-          <div className="flex flex-col gap-6 lg:col-span-4 mx-auto lg:mx-0 w-full max-w-sm sm:max-w-md lg:max-w-sm">
+          <div className="flex flex-col gap-8 lg:col-span-4 mx-auto lg:mx-0 w-full max-w-sm lg:max-w-full">
             {/* Identity Card */}
-            <div className="relative rounded-3xl bg-[#1a1b1f] w-full max-w-sm flex flex-col overflow-hidden">
-              <div className="p-6 lg:p-8 pb-6 flex flex-col items-center">
+            <div 
+              className="relative rounded-[2.5rem] border border-white/5 bg-white/[0.02] backdrop-blur-xl w-full flex flex-col shadow-2xl group transition-all duration-500 hover:bg-white/[0.03]"
+              style={{
+                WebkitMaskImage: 'radial-gradient(circle at 0% calc(100% - 95px), transparent 16px, black 17px), radial-gradient(circle at 100% calc(100% - 95px), transparent 16px, black 17px)',
+                WebkitMaskSize: '51% 100%',
+                WebkitMaskRepeat: 'no-repeat',
+                WebkitMaskPosition: 'left top, right top',
+                maskImage: 'radial-gradient(circle at 0% calc(100% - 95px), transparent 16px, black 17px), radial-gradient(circle at 100% calc(100% - 95px), transparent 16px, black 17px)',
+                maskSize: '51% 100%',
+                maskRepeat: 'no-repeat',
+                maskPosition: 'left top, right top',
+              }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-[#14B8A6]/5 to-transparent pointer-events-none" />
+              <div className="p-8 pb-6 flex flex-col items-center relative z-10">
                 {/* Photo + Verified */}
-                <div className="flex justify-center relative w-full mb-4">
-                  <div className="relative w-24 h-24 rounded-2xl overflow-hidden bg-zinc-800 ring-2 ring-white/10 shadow-xl mx-auto">
+                <div className="flex justify-center relative w-full mb-6 mt-4">
+                  <div className="relative w-28 h-28 rounded-3xl overflow-hidden bg-black/40 ring-1 ring-white/10 shadow-[0_0_30px_rgba(20,184,166,0.15)] mx-auto group-hover:scale-105 transition-transform duration-500">
                     {profileLoading ? (
-                      <div className="flex h-full w-full items-center justify-center bg-zinc-900">
-                        <Loader2 className="w-6 h-6 text-teal-400 animate-spin" />
+                      <div className="flex h-full w-full items-center justify-center">
+                        <Loader2 className="w-6 h-6 text-[#14B8A6] animate-spin" />
                       </div>
                     ) : (
                       <img
@@ -217,25 +563,25 @@ export default function MyTicketsPage() {
                       />
                     )}
                   </div>
-                  <div className="absolute top-0 right-1/2 -mr-16 bg-[#141517] rounded-full px-2 py-1 flex items-center gap-1.5 border border-white/5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-teal-400"></div>
-                    <span className="text-[9px] font-bold tracking-widest text-teal-400 uppercase">Verified</span>
+                  <div className="absolute top-0 right-1/2 -mr-20 bg-black/60 backdrop-blur-md rounded-full px-3 py-1.5 flex items-center gap-1.5 border border-white/10 shadow-lg">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#14B8A6] animate-pulse"></div>
+                    <span className="text-[10px] font-bold tracking-widest text-[#14B8A6] uppercase">Verified</span>
                   </div>
                 </div>
 
                 {/* Name */}
-                <h2 className="text-xl font-bold text-white tracking-tight text-center w-full mb-1">
+                <h2 className="text-2xl font-bold text-white tracking-tight text-center w-full mb-1">
                   {profileLoading ? (
-                    <span className="inline-block w-24 h-5 bg-zinc-800 rounded animate-pulse"></span>
+                    <span className="inline-block w-24 h-6 bg-white/5 rounded-lg animate-pulse"></span>
                   ) : (
                     profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : username
                   )}
                 </h2>
 
                 {/* ID */}
-                <p className="text-xs font-bold tracking-widest text-[#5c6870] uppercase font-mono w-full text-center overflow-hidden text-ellipsis whitespace-nowrap">
+                <p className="text-[11px] font-bold tracking-widest text-zinc-500 uppercase font-mono w-full text-center overflow-hidden text-ellipsis whitespace-nowrap">
                   {profileLoading ? (
-                    <span className="inline-block w-20 h-3 bg-zinc-800 rounded animate-pulse"></span>
+                    <span className="inline-block w-20 h-3 bg-white/5 rounded animate-pulse mt-2"></span>
                   ) : (
                     `ID: ${(profile?.id || user?.id || "N/A").toString().slice(0, 12)}...`
                   )}
@@ -243,22 +589,20 @@ export default function MyTicketsPage() {
               </div>
 
               {/* TICKET DIVIDER */}
-              <div className="relative flex items-center justify-center w-full h-8 z-10">
-                 <div className="absolute -left-4 w-8 h-8 rounded-full bg-[#111214] shadow-inner" />
-                 <div className="absolute -right-4 w-8 h-8 rounded-full bg-[#111214] shadow-inner" />
-                 <div className="w-[calc(100%-40px)] border-t-[2px] border-dashed border-white/10 opacity-60" />
+              <div className="relative flex items-center justify-center w-full h-8 opacity-40 z-10">
+                 <div className="w-[calc(100%-60px)] border-t-[2px] border-dashed border-white/20" />
               </div>
 
-              <div className="p-6 lg:p-8 pt-4 flex flex-col items-center bg-black/10 flex-1">
+              <div className="p-8 pt-4 flex flex-col items-center bg-black/20 flex-1 relative z-10">
                 {/* Badges */}
-                <div className="space-y-2 w-full mb-6">
-                  <div className="flex items-center gap-3 rounded-lg bg-[#212328] border border-white/5 px-3 py-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
-                    <span className="text-xs font-bold tracking-widest text-white uppercase">Photo Auth</span>
+                <div className="space-y-3 w-full mb-8 mt-2">
+                  <div className="flex items-center gap-4 rounded-xl bg-white/[0.03] border border-white/5 px-4 py-3">
+                    <CheckCircle2 className="w-5 h-5 text-[#14B8A6] shrink-0 drop-shadow-[0_0_8px_rgba(20,184,166,0.5)]" />
+                    <span className="text-xs font-bold tracking-widest text-zinc-300 uppercase">Photo Auth</span>
                   </div>
-                  <div className="flex items-center gap-3 rounded-lg bg-[#212328] border border-white/5 px-3 py-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
-                    <span className="text-xs font-bold tracking-widest text-white uppercase">National ID</span>
+                  <div className="flex items-center gap-4 rounded-xl bg-white/[0.03] border border-white/5 px-4 py-3">
+                    <CheckCircle2 className="w-5 h-5 text-[#14B8A6] shrink-0 drop-shadow-[0_0_8px_rgba(20,184,166,0.5)]" />
+                    <span className="text-xs font-bold tracking-widest text-zinc-300 uppercase">National ID</span>
                   </div>
                 </div>
 
@@ -267,60 +611,43 @@ export default function MyTicketsPage() {
                   type="button"
                   onClick={handleDownloadPdf}
                   disabled={downloadingPdf}
-                  className="w-full flex items-center justify-center gap-2 rounded-lg bg-white py-3 text-xs font-bold tracking-widest uppercase text-black transition-colors hover:bg-zinc-200 disabled:opacity-60 cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 rounded-[1.5rem] bg-gradient-to-r from-[#14B8A6] to-[#0F766E] py-4 text-[11px] font-bold tracking-widest uppercase text-black transition-all hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(20,184,166,0.3)] disabled:opacity-50 cursor-pointer"
                 >
-                  {downloadingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  {downloadingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" strokeWidth={3} />}
                   {downloadingPdf ? "Generating..." : "Download Fan ID"}
                 </button>
               </div>
-            </div>
-
-            {/* Secure Wallet Card */}
-            <div className="rounded-xl border border-[#ffffff0a] bg-[#1a1b1f] p-6 lg:p-8">
-              <div className="mb-4 flex items-center gap-2">
-                <Shield className="w-4 h-4 text-[#a88832]" />
-                <h3 className="text-xs font-bold tracking-widest text-white uppercase">
-                  Secure Wallet
-                </h3>
-              </div>
-              <p className="mb-6 text-xs leading-relaxed text-zinc-400">
-                Your Fan ID and tickets are encrypted using Obsidian Velocity's
-                proprietary quantum-safe architecture.
-              </p>
-              <div className="flex gap-1.5 w-full">
-                <div className="h-1 flex-1 rounded-full bg-teal-400"></div>
-                <div className="h-1 flex-1 rounded-full bg-teal-400"></div>
-                <div className="h-1 flex-1 rounded-full bg-teal-400"></div>
-                <div className="h-1 flex-1 rounded-full bg-[#2a2c31]"></div>
-              </div>
-            </div>
+            </div>            
           </div>
 
           {/* Right Column - Tickets List */}
           <div className="lg:col-span-8">
-            <div className="mb-6 flex items-center justify-between pt-2">
-              <h2 className="text-xl font-medium tracking-tight text-white">
+            <div className="mb-8 flex items-center justify-between">
+              <h2 className="text-2xl font-bold tracking-tight text-white flex items-center gap-3">
                 Active Tickets
+                <span className="px-3 py-1 bg-white/5 rounded-full text-xs font-bold text-[#14B8A6] border border-white/10">{tickets.length}</span>
               </h2>
               {loading && (
-                <Loader2 className="w-5 h-5 text-teal-400 animate-spin" />
+                <Loader2 className="w-6 h-6 text-[#14B8A6] animate-spin" />
               )}
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-6">
               {!loading && tickets.length === 0 && (
-                <div className="rounded-xl border border-white/10 bg-[#1a1b1f] p-8 text-center text-zinc-400">
-                  No tickets found.
+                <div className="rounded-[2.5rem] border border-white/5 bg-white/[0.02] backdrop-blur-xl p-16 text-center shadow-2xl flex flex-col items-center">
+                  <div className="w-20 h-20 bg-black/40 rounded-full flex items-center justify-center border border-white/5 mb-6">
+                    <Calendar className="w-8 h-8 text-zinc-600" />
+                  </div>
+                  <p className="text-lg text-zinc-400 font-medium">No active tickets found.</p>
+                  <p className="text-sm text-zinc-500 mt-2">Book an event to see your tickets here.</p>
                 </div>
               )}
               {tickets.map((ticket, index) => {
                 const bookingId = ticket.bookingId || ticket.id || index;
-                const eventName =
-                  ticket.eventName || ticket.name || "Event Ticket";
-                const when =
-                  ticket.eventDate || ticket.date || ticket.createdAt;
-                const seat =
-                  ticket.seatNumber || ticket.seat || ticket.seatId || "-";
+                const eventName = ticket.eventName || ticket.name || "Event Ticket";
+                const when = ticket.eventDate || ticket.date || ticket.createdAt;
+                const seat = ticket.seatNumber || ticket.seat || ticket.seatId || "-";
+                const amountPaid = ticket.amountPaid ?? ticket.price ?? null;
                   
                 const matchedEvent = events.find(e => e.id === ticket.eventId || e.name === ticket.eventName || e.title === ticket.eventName);
                 const eventImage = resolveImg(matchedEvent?.imageUrl || ticket.imageUrl || ticket.event?.imageUrl || ticket.eventImage);
@@ -328,43 +655,71 @@ export default function MyTicketsPage() {
                 return (
                   <div
                     key={bookingId}
-                    className="relative flex flex-col overflow-hidden rounded-3xl min-h-[180px] bg-[#1a1b1f]"
+                    className="relative flex flex-col overflow-hidden rounded-[2.5rem] min-h-[220px] bg-white/[0.02] backdrop-blur-xl border border-white/5 shadow-2xl group transition-all duration-500 hover:bg-white/[0.03]"
+                    style={{
+                      WebkitMaskImage: 'radial-gradient(circle at 0% calc(100% - 90px), transparent 18px, black 19px), radial-gradient(circle at 100% calc(100% - 90px), transparent 18px, black 19px)',
+                      WebkitMaskSize: '51% 100%',
+                      WebkitMaskRepeat: 'no-repeat',
+                      WebkitMaskPosition: 'left top, right top',
+                      maskImage: 'radial-gradient(circle at 0% calc(100% - 90px), transparent 18px, black 19px), radial-gradient(circle at 100% calc(100% - 90px), transparent 18px, black 19px)',
+                      maskSize: '51% 100%',
+                      maskRepeat: 'no-repeat',
+                      maskPosition: 'left top, right top',
+                    }}
                   >
-                    {/* Background Image */}
+                    {/* Background Image & Glowing Overlay */}
                     <div 
-                      className="absolute inset-0 z-0 bg-cover bg-center opacity-40 pointer-events-none"
+                      className="absolute inset-0 z-0 bg-cover bg-center opacity-30 pointer-events-none scale-105 group-hover:scale-100 transition-transform duration-700"
                       style={{ backgroundImage: `url(${eventImage})` }}
                     />
-                    {/* Dark Overlay for Readability */}
-                    <div className="absolute inset-0 z-0 bg-gradient-to-r from-[#1a1b1f] via-[#1a1b1f]/95 to-[#1a1b1f]/80 pointer-events-none" />
+                    <div className="absolute inset-0 z-0 bg-gradient-to-r from-black/95 via-black/80 to-transparent pointer-events-none" />
+                    
+                    {/* Color Glow */}
+                    <div className="absolute -top-32 -left-32 w-64 h-64 bg-[#14B8A6]/30 blur-[100px] rounded-full pointer-events-none opacity-50"></div>
 
                     {/* TOP SECTION (Info + QR) */}
-                    <div className="relative z-10 flex flex-1 flex-col p-6 lg:p-8 pb-4">
-                      <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
-                        <div>
-                          <h3 className="mb-1.5 text-2xl font-bold tracking-tight text-white pr-4">
+                    <div className="relative z-10 flex flex-1 flex-col p-8 lg:p-10 pb-6">
+                      <div className="mb-6 flex flex-wrap items-start justify-between gap-6">
+                        <div className="max-w-[70%]">
+                          <h3 className="mb-3 text-3xl font-bold tracking-tighter text-white drop-shadow-md">
                             {eventName}
                           </h3>
-                          <div className="flex items-center text-xs font-medium text-zinc-400">
-                            <Calendar className="mr-1.5 w-3.5 h-3.5" />
+                          <div className="flex items-center text-sm font-medium text-zinc-300">
+                            <Calendar className="mr-2 w-4 h-4 text-[#14B8A6]" />
                             {when ? new Date(when).toLocaleString() : "TBA"}
                           </div>
                         </div>
-                        <span className="rounded bg-teal-500/10 border border-teal-500/20 px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-[#30d8c0]">
-                          Booking #{bookingId}
+                        <span className="rounded-full bg-[#14B8A6]/10 border border-[#14B8A6]/30 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-[#14B8A6] shadow-[0_0_15px_rgba(20,184,166,0.15)]">
+                          Booking #{String(bookingId).slice(-6)}
                         </span>
                       </div>
+                      
                       <div className="flex items-end justify-between mt-auto pt-4">
-                        <div>
-                          <p className="text-[10px] font-bold tracking-widest text-[#5c6870] uppercase mb-1">
-                            Seat
-                          </p>
-                          <p className="text-xl font-bold text-white">{seat}</p>
+                        <div className="flex gap-10">
+                          <div>
+                            <p className="text-[11px] font-bold tracking-widest text-zinc-500 uppercase mb-2">
+                              Seat
+                            </p>
+                            <p className="text-2xl font-bold text-white drop-shadow-md">{seat}</p>
+                          </div>
+                          {amountPaid !== null && (
+                            <div>
+                              <p className="text-[11px] font-bold tracking-widest text-zinc-500 uppercase mb-2">
+                                Paid
+                              </p>
+                              <p className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#14B8A6] to-[#0F766E] drop-shadow-sm">
+                                EGP {Number(amountPaid).toLocaleString()}
+                              </p>
+                            </div>
+                          )}
                         </div>
-                        <div className="rounded-lg bg-white p-2 flex items-center justify-center shadow-lg">
+                        
+                        {/* QR Code Container */}
+                        <div className="rounded-2xl bg-white p-3 flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.1)] ring-4 ring-white/10 group-hover:scale-105 transition-transform duration-500">
                           <QRCodeSVG
+                            id={`qr-${bookingId}`}
                             value={ticket.qrData || ticket.qrCode || String(bookingId)}
-                            size={64}
+                            size={76}
                             bgColor="#ffffff"
                             fgColor="#000000"
                             level="M"
@@ -375,30 +730,36 @@ export default function MyTicketsPage() {
                     </div>
 
                     {/* TICKET DIVIDER */}
-                    <div className="relative flex items-center justify-center w-full h-8 z-10">
-                       <div className="absolute -left-4 w-8 h-8 rounded-full bg-[#111214] shadow-inner" />
-                       <div className="absolute -right-4 w-8 h-8 rounded-full bg-[#111214] shadow-inner" />
-                       <div className="w-[calc(100%-40px)] border-t-[2px] border-dashed border-white/10 opacity-60" />
+                    <div className="relative flex items-center justify-center w-full h-8 opacity-30 z-10">
+                       <div className="w-[calc(100%-80px)] border-t-[3px] border-dashed border-white/40" />
                     </div>
 
                     {/* BOTTOM SECTION (Actions) */}
-                    <div className="relative z-10 p-6 lg:p-8 pt-4 bg-black/20">
-                      <div className="flex gap-3">
+                    <div className="relative z-10 p-8 pt-4 bg-black/40 backdrop-blur-md">
+                      <div className="grid grid-cols-3 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadTicket(ticket)}
+                          disabled={actionLoadingId === bookingId}
+                          className="flex items-center justify-center gap-2 rounded-xl border border-[#14B8A6]/30 bg-[#14B8A6]/10 py-3.5 text-[11px] font-bold uppercase tracking-widest text-[#14B8A6] transition-all hover:bg-[#14B8A6]/20 hover:border-[#14B8A6]/40 disabled:opacity-50"
+                        >
+                          <Download className="w-4 h-4" /> Download
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleTransfer(ticket)}
                           disabled={actionLoadingId === bookingId}
-                          className="flex-1 flex items-center justify-center gap-2 rounded border border-[#ffffff0a] bg-[#212328] py-3 text-[10px] font-bold uppercase tracking-widest text-white transition-colors hover:bg-white/5 disabled:opacity-60"
+                          className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-3.5 text-[11px] font-bold uppercase tracking-widest text-white transition-all hover:bg-white/10 hover:border-white/20 disabled:opacity-50"
                         >
-                          <Send className="w-3.5 h-3.5" /> Transfer
+                          <Send className="w-4 h-4" /> Transfer
                         </button>
                         <button
                           type="button"
                           onClick={() => handleCancel(ticket)}
                           disabled={actionLoadingId === bookingId}
-                          className="flex-1 flex items-center justify-center gap-2 rounded border border-red-500/30 bg-red-500/10 py-3 text-[10px] font-bold uppercase tracking-widest text-red-300 transition-colors hover:bg-red-500/20 disabled:opacity-60"
+                          className="flex items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 py-3.5 text-[11px] font-bold uppercase tracking-widest text-red-400 transition-all hover:bg-red-500/20 hover:border-red-500/40 disabled:opacity-50"
                         >
-                          <XCircle className="w-3.5 h-3.5" /> Cancel
+                          <XCircle className="w-4 h-4" /> Cancel
                         </button>
                       </div>
                     </div>

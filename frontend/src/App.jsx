@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
-import useAuthStore from "./store/useAuthStore";
+import Lenis from 'lenis';
+import 'lenis/dist/lenis.css';
 import axios from "axios";
 import { setupInterceptors } from "./services/axiosInterceptors";
 
@@ -20,6 +21,7 @@ import SignUpPage from "./pages/auth/SignUpPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import ResendConfirmationPage from "./pages/auth/ResendConfirmationPage";
+import ConfirmEmailPage from "./pages/auth/ConfirmEmailPage";
 import ChangePasswordPage from "./pages/auth/ChangePasswordPage";
 import SessionPage from "./pages/auth/SessionPage";
 import BlastCampaignPage from "./pages/auth/BlastCampaignPage";
@@ -28,7 +30,8 @@ import BlastCampaignPage from "./pages/auth/BlastCampaignPage";
 import AnalyticsPage from "./pages/admin/AnalyticsPage";
 import AdminPage from "./pages/admin/AdminPage";
 import AdminLogsPage from "./pages/admin/AdminLogsPage";
-import ManageEventPage from "./pages/admin/ManageEventPage";
+import CreateEventPage from "./pages/admin/CreateEventPage";
+import EditEventsPage from "./pages/admin/EditEventsPage";
 import StaffPage from "./pages/admin/StaffPage";
 import UsersManagementPage from "./pages/admin/UsersManagementPage";
 
@@ -45,9 +48,29 @@ import TicketAlert from "./components/TicketAlert";
 // ─────────────────────────────────────────────
 
 function App() {
-  // Auth state
-  const token = useAuthStore((state) => state.token);
-  const user = useAuthStore((state) => state.user);
+  useEffect(() => {
+    const lenis = new Lenis({
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), 
+      direction: 'vertical',
+      gestureDirection: 'vertical',
+      smooth: true,
+      mouseMultiplier: 1,
+      smoothTouch: false,
+      touchMultiplier: 2,
+      infinite: false,
+    });
+
+    function raf(time) {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    }
+    requestAnimationFrame(raf);
+
+    return () => {
+      lenis.destroy();
+    };
+  }, []);
 
   return (
     <>
@@ -59,20 +82,14 @@ function App() {
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/resend-confirmation" element={<ResendConfirmationPage />} />
+      <Route path="/confirm-email" element={<ConfirmEmailPage />} />
       <Route path="/session" element={<SessionPage />} />
       <Route path="/booking/validate" element={<ValidateTicketPage />} />
       <Route path="/booking/scan" element={<ScanTicketPage />} />
       <Route path="/booking/callback" element={<BookingCallbackPage />} />
+      <Route path="/" element={<HomePage />} />
 
       {/* ── Protected Routes ── */}
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <HomePage />
-          </ProtectedRoute>
-        }
-      />
       <Route
         path="/events"
         element={
@@ -156,10 +173,18 @@ function App() {
         }
       />
       <Route
-        path="/manage-event"
+        path="/create-event"
         element={
           <ProtectedRoute>
-            <ManageEventPage />
+            <CreateEventPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/edit-events"
+        element={
+          <ProtectedRoute>
+            <EditEventsPage />
           </ProtectedRoute>
         }
       />

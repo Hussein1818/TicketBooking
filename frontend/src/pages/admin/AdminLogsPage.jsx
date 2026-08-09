@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Terminal, Loader2, ChevronLeft, ChevronRight, Search } from 'lucide-react';
-import axios from 'axios';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import useAuthStore from '../../store/useAuthStore';
+import { getLogs } from '../../services/adminApi';
 
 export default function AdminLogsPage() {
   const [logs, setLogs] = useState([]);
@@ -15,17 +15,12 @@ export default function AdminLogsPage() {
     const fetchLogs = async () => {
       setLoading(true);
       try {
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://ticketok.runasp.net';
-        const response = await axios.get(`${baseUrl}/api/Admin/logs`, {
-          params: { page, pageSize },
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        
+        const data = await getLogs(page, pageSize, token);
         // Handle various response structures gracefully
-        const data = Array.isArray(response.data) ? response.data : (response.data.items || response.data.data || []);
-        setLogs(data);
-      } catch (error) {
-        console.error("Error fetching logs:", error);
+        const items = Array.isArray(data) ? data : (data.items || data.data || []);
+        setLogs(items);
+      } catch {
+        // silent fallback
       } finally {
         setLoading(false);
       }
@@ -40,35 +35,42 @@ export default function AdminLogsPage() {
 
   return (
     <DashboardLayout>
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-8 flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
+      {/* Ambient Lighting */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute top-[10%] left-[-10%] w-[500px] h-[500px] bg-[#0F766E]/15 blur-[150px] rounded-full mix-blend-screen" />
+        <div className="absolute top-[40%] right-[-10%] w-[700px] h-[700px] bg-[#14B8A6]/10 blur-[150px] rounded-full mix-blend-screen" />
+        <div className="absolute bottom-[-10%] left-[20%] w-[600px] h-[600px] bg-[#0F766E]/15 blur-[180px] rounded-full mix-blend-screen" />
+      </div>
+
+      <div className="relative z-10 mx-auto max-w-7xl space-y-8 pb-16 px-4 animate-in fade-in slide-in-from-bottom-4 duration-700 mt-8">
+        <div className="mb-8 flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
           <div>
-            <h1 className="mb-2 text-3xl md:text-4xl font-bold tracking-tight text-white flex items-center gap-3">
-              <Terminal className="text-teal-400 w-8 h-8" />
-              System <span className="text-teal-400">Logs</span>
+            <h1 className="text-4xl lg:text-5xl font-bold tracking-tighter text-white drop-shadow-md flex items-center gap-4 mb-3">
+              <Terminal className="text-[#14B8A6] w-10 h-10" />
+              System <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#14B8A6] to-[#0F766E]">Logs</span>
             </h1>
-            <p className="max-w-md text-sm text-zinc-400 leading-relaxed">
+            <p className="max-w-md text-base text-zinc-400 leading-relaxed">
               Real-time audit trailing and operational monitoring for Obsidian Velocity.
             </p>
           </div>
           
-          <div className="relative w-full md:w-64">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-              <Search className="h-4 w-4 text-zinc-500" />
+          <div className="relative w-full md:w-80">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+              <Search className="h-5 w-5 text-[#14B8A6]" />
             </div>
             <input
               type="text"
               placeholder="Search logs..."
-              className="w-full rounded-lg bg-[#1a1b1f] py-2.5 pl-10 pr-4 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-teal-500/50"
+              className="w-full rounded-2xl border border-white/10 bg-black/40 py-4 pl-12 pr-4 text-sm text-white placeholder-zinc-600 focus:border-[#14B8A6]/50 focus:bg-white/[0.03] focus:outline-none transition-all shadow-inner"
             />
           </div>
         </div>
 
-        <div className="rounded-xl border border-white/5 bg-[#16171a] overflow-hidden">
-           <div className="flex items-center justify-between p-6 border-b border-white/5">
-              <h2 className="text-lg font-medium text-white">Event Streams</h2>
+        <div className="rounded-[2.5rem] border border-white/5 bg-white/[0.02] backdrop-blur-xl shadow-2xl overflow-hidden">
+           <div className="flex items-center justify-between p-8 border-b border-white/5 bg-black/20">
+              <h2 className="text-lg font-bold text-white drop-shadow-sm">Event Streams</h2>
               <div className="flex items-center gap-3">
-                 <button className="text-[11px] font-bold uppercase tracking-wider text-black bg-teal-400 hover:bg-teal-300 transition-colors px-4 py-2 rounded">
+                 <button className="px-6 py-3 text-xs font-bold uppercase tracking-widest bg-gradient-to-r from-[#14B8A6] to-[#0F766E] text-white shadow-[0_0_20px_rgba(20,184,166,0.3)] rounded-full hover:scale-105 transition-transform">
                    Export Data
                  </button>
               </div>
@@ -76,8 +78,8 @@ export default function AdminLogsPage() {
 
            <div className="w-full overflow-x-auto min-h-[400px] relative">
              {loading ? (
-               <div className="absolute inset-0 flex items-center justify-center bg-[#16171a]/50 backdrop-blur-sm z-10">
-                 <Loader2 className="w-8 h-8 text-teal-400 animate-spin" />
+               <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-md z-10">
+                 <Loader2 className="w-10 h-10 text-[#14B8A6] animate-spin" />
                </div>
              ) : null}
              
@@ -98,10 +100,10 @@ export default function AdminLogsPage() {
                        {log.timestamp || log.createdAt ? new Date(log.timestamp || log.createdAt).toLocaleString() : new Date().toLocaleString()}
                      </td>
                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center gap-1.5 rounded px-2py-0.5 text-[10px] font-bold uppercase tracking-widest ${
-                          log.level === 'Error' ? 'text-red-400 bg-red-400/10' :
-                          log.level === 'Warning' ? 'text-amber-400 bg-amber-400/10' :
-                          'text-teal-400 bg-teal-400/10'
+                        <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${
+                          log.level === 'Error' ? 'text-red-400 bg-red-400/10 border border-red-400/20' :
+                          log.level === 'Warning' ? 'text-amber-400 bg-amber-400/10 border border-amber-400/20' :
+                          'text-[#14B8A6] bg-[#14B8A6]/10 border border-[#14B8A6]/20'
                         }`}>
                            {log.level || log.type || 'INFO'}
                         </span>
@@ -122,8 +124,8 @@ export default function AdminLogsPage() {
            </div>
 
            {/* Pagination */}
-           <div className="flex items-center justify-between p-4 border-t border-white/5 bg-[#111214]">
-              <span className="text-xs text-zinc-500">
+           <div className="flex items-center justify-between p-6 border-t border-white/5 bg-black/20">
+              <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">
                 Showing page {page} ({pageSize} items per page)
               </span>
               <div className="flex items-center gap-2">

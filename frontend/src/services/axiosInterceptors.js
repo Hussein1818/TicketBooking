@@ -60,7 +60,7 @@ export const setupInterceptors = (client) => {
             token: oldToken,
             accessToken: oldToken,
             refreshToken: refreshTokenValue
-          });
+          }, { withCredentials: true });
           const data = response.data;
           
           const newToken = data?.accessToken || data?.token;

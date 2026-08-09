@@ -17,8 +17,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      const clientURI = `${window.location.origin}/reset-password`;
-      const message = await forgotPassword(email, clientURI);
+      const message = await forgotPassword(email);
       setSuccess(message);
     } catch (errorObject) {
       setError(getErrorMessage(errorObject, "Failed to send reset email."));
