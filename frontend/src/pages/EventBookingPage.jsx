@@ -8,6 +8,8 @@ import { createBooking, cancelBooking, checkoutWallet, checkoutMock, getErrorMes
 import { validatePromoCode } from "../services/promoCodesApi";
 import { getEventById, getEventSeats, getEvents } from "../services/eventsApi";
 import EventCard from "../components/EventCard";
+import { QRCodeSVG } from "qrcode.react";
+import { generateTicketImage } from "../utils/ticketImageGenerator";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://ticketok.runasp.net';
 const resolveImg = (url) => !url ? null : url.startsWith('http') ? url : `${BASE_URL}${url}`;
@@ -190,6 +192,7 @@ export default function EventBookingPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const token = useAuthStore((s) => s.token);
+  const user  = useAuthStore((s) => s.user);
 
   const [seats, setSeats]               = useState([]);
   const [loading, setLoading]           = useState(true);
@@ -301,9 +304,33 @@ export default function EventBookingPage() {
     try {
       const bookingIds = selectedSeatIds.map(id => lockedBookings[id]).filter(Boolean);
 
+      const usernameVal = user?.username || user?.userName || user?.email || "User";
+      const eventNameVal = eventDetails?.name || eventDetails?.title || "Event Ticket";
+      const eventDateVal = eventDetails?.eventDate || eventDetails?.date;
+
+      const triggerTicketDownloads = async () => {
+        for (const seatId of selectedSeatIds) {
+          const bookingId = lockedBookings[seatId] || seatId;
+          const seatObj = seats.find((s) => s.id === seatId);
+          const seatNumber = seatObj?.seatNumber ?? seatObj?.label ?? seatId;
+          const amountPaid = seatObj?.price ?? seatObj?.pricePerSeat ?? (totalPrice / selectedSeatIds.length);
+
+          await generateTicketImage({
+            bookingId,
+            eventName: eventNameVal,
+            eventDate: eventDateVal,
+            seatNumber,
+            amountPaid,
+            eventImage,
+            username: usernameVal,
+          });
+        }
+      };
+
       if (checkoutType === "mock") {
         await checkoutMock(token);
-        setSuccess("Mock checkout completed.");
+        await triggerTicketDownloads();
+        setSuccess("Mock checkout completed. Tickets downloaded!");
         setTimeout(() => {
           setSelectedSeatIds([]); setLockedBookings({}); setPromoCode("");
           setIsCheckoutModalOpen(false);
@@ -312,20 +339,9 @@ export default function EventBookingPage() {
       } else if (checkoutType === "wallet") {
         if (!bookingIds.length) throw new Error("No locked bookings found to checkout.");
         const r = await checkoutWallet({ bookingIds, promoCode: promoCode || "" }, token);
+        await triggerTicketDownloads();
         
-        if (r instanceof Blob) {
-          const url = window.URL.createObjectURL(r);
-          const link = document.createElement("a");
-          link.href = url;
-          link.setAttribute("download", `Tickets-${Date.now()}.pdf`);
-          document.body.appendChild(link);
-          link.click();
-          link.parentNode.removeChild(link);
-          setTimeout(() => window.URL.revokeObjectURL(url), 1000);
-          setSuccess("Wallet checkout completed. Tickets downloaded!");
-        } else {
-          setSuccess(typeof r === "string" ? r : "Wallet checkout completed.");
-        }
+        setSuccess(typeof r === "string" ? r : (r?.message || "Wallet checkout completed. Tickets downloaded!"));
         
         setTimeout(() => {
           setSelectedSeatIds([]); setLockedBookings({}); setPromoCode("");
@@ -621,6 +637,26 @@ export default function EventBookingPage() {
           </div>
         </div>
       )}
+
+      {/* Hidden QR codes container for ticket image canvas generator */}
+      <div className="hidden">
+        {selectedSeatIds.map((seatId) => {
+          const bookingId = lockedBookings[seatId];
+          if (!bookingId) return null;
+          const uName = user?.username || user?.userName || user?.email || "User";
+          return (
+            <QRCodeSVG
+              key={bookingId}
+              id={`qr-${bookingId}`}
+              value={`TICKET-${bookingId}-${uName}`}
+              size={200}
+              fgColor="#000000"
+              bgColor="#FFFFFF"
+              level="H"
+            />
+          );
+        })}
+      </div>
     </DashboardLayout>
   );
 }

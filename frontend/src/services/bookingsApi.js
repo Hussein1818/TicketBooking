@@ -71,28 +71,8 @@ export const checkoutWallet = async ({ bookingIds, promoCode }, token) => {
     bookingIds: bookingIds.map(id => Number(id)),
     promoCode: promoCode && promoCode.trim() !== "" ? promoCode : null
   };
-  const config = {
-    ...(authConfig(token) || {}),
-    responseType: "blob"
-  };
-  try {
-    const response = await bookingsClient.post("/checkout-wallet", payload, config);
-    return response.data;
-  } catch (error) {
-    if (error?.response?.data instanceof Blob) {
-      try {
-        const text = await error.response.data.text();
-        try {
-          error.response.data = JSON.parse(text);
-        } catch {
-          error.response.data = text;
-        }
-      } catch {
-        // failed to read blob text
-      }
-    }
-    throw error;
-  }
+  const response = await bookingsClient.post("/checkout-wallet", payload, authConfig(token));
+  return response.data;
 };
 
 // POST /api/Bookings/checkout-paymob — { bookingIds, promoCode, targetCurrency }
